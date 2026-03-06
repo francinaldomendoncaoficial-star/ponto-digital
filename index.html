@@ -1,128 +1,1968 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ponto Digital - Natal/RN</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1e272e; color: white; margin: 0; padding: 20px; }
-    .container { max-width: 500px; margin: auto; }
-    #canvas { width: 100%; border: 5px solid #485460; border-radius: 20px; background: #000; display: none; }
-    #status { font-size: 1.2em; margin-top: 20px; padding: 15px; border-radius: 12px; background: #485460; min-height: 50px; }
-    #timer { font-size: 8em; color: #ff3f34; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; display: none; z-index: 10; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
-    .camera-box { position: relative; display: inline-block; width: 100%; }
-    #btnAtivar { padding: 20px 40px; font-size: 1.2em; cursor: pointer; background: #05c46b; color: white; border: none; border-radius: 10px; font-weight: bold; width: 100%; }
-    .sucesso { background: #05c46b !important; }
-    .erro { background: #ff5e57 !important; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PontoQR</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --bg:#090d18;--bg2:#0f1623;--bg3:#16202f;--card:#192233;--card2:#1e2a3d;
+  --acc:#00e5c3;--blue:#0ea5e9;--ora:#f97316;--warn:#fbbf24;
+  --red:#f43f5e;--grn:#34d399;
+  --txt:#e4ecf7;--txt2:#7a93b0;--txt3:#364c64;--brd:#1e3048;
+  --r:12px;--sh:0 8px 32px rgba(0,0,0,.45);
+  --sidebar-w:276px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans',sans-serif}
+body{display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px}
+
+/* ── TOPBAR ── */
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:54px;background:var(--bg2);
+  border-bottom:1px solid var(--brd);flex-shrink:0;z-index:100
+}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:var(--acc);letter-spacing:-.5px}
+.logo s{color:var(--txt2);font-weight:700;text-decoration:none}
+#mbtn{background:none;border:none;color:var(--txt2);cursor:pointer;padding:8px;border-radius:8px;line-height:0;transition:.15s}
+#mbtn:active{background:var(--bg3)}
+.epill{
+  background:var(--bg3);border:1px solid var(--brd);border-radius:20px;
+  padding:4px 12px;font-size:.7rem;color:var(--blue);font-weight:600;
+  max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer
+}
+
+/* ── LAYOUT RESPONSIVO ── */
+#layout{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--brd);
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+  transition:transform .26s ease,width .26s ease;
+}
+#sbo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:299}
+#sbh{padding:20px 18px 14px;border-bottom:1px solid var(--brd);flex-shrink:0}
+#sbh .ver{font-size:.65rem;color:var(--txt3);margin-top:3px}
+#sidebar nav{flex:1;overflow-y:auto;padding:8px 0}
+.nsec{padding:10px 18px 4px;font-size:.62rem;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:1.2px}
+.ni{
+  display:flex;align-items:center;gap:11px;padding:11px 18px;
+  cursor:pointer;color:var(--txt2);font-size:.88rem;font-weight:500;
+  border-left:2px solid transparent;transition:.15s;white-space:nowrap
+}
+.ni:hover,.ni.on{background:var(--bg3);color:var(--txt);border-left-color:var(--acc)}
+.ni .ic{width:18px;text-align:center;font-size:.9rem;flex-shrink:0}
+
+/* ── MOBILE: sidebar como drawer ── */
+@media (max-width: 860px) {
+  #sidebar{
+    position:fixed;left:0;top:0;bottom:0;z-index:300;
+    transform:translateX(-100%);
+  }
+  #sidebar.open{transform:translateX(0)}
+  #sbo.show{display:block;z-index:299}
+  #mbtn{display:flex}
+}
+@media (min-width: 861px) {
+  #mbtn{display:none}
+  #sidebar{transform:none !important}
+}
+
+/* ── MAIN ── */
+#main{flex:1;overflow-y:auto;position:relative;display:flex;flex-direction:column}
+.pg{display:none;flex:1;flex-direction:column;min-height:0}
+.pg.on{display:flex}
+.ph{padding:20px 20px 10px}
+.ph h1{font-family:'Syne',sans-serif;font-weight:700;font-size:1.4rem}
+.ph p{color:var(--txt2);font-size:.82rem;margin-top:3px}
+.pc{flex:1;overflow-y:auto;padding:0 20px 100px}
+
+/* ── BOTTOM NAV (mobile only) ── */
+#bnav{
+  display:none;background:var(--bg2);border-top:1px solid var(--brd);
+  flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)
+}
+@media (max-width:860px){ #bnav{display:flex} }
+.bn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:9px 2px 7px;cursor:pointer;
+  color:var(--txt3);font-size:.56rem;font-weight:600;gap:3px;
+  border-top:2px solid transparent;transition:.15s;text-transform:uppercase;letter-spacing:.3px
+}
+.bn .bi{font-size:1.15rem}
+.bn.on{color:var(--acc);border-top-color:var(--acc)}
+
+/* ── CARDS ── */
+.card{background:var(--card);border-radius:var(--r);border:1px solid var(--brd);padding:16px}
+.card+.card,.card+.mb,.mb{margin-top:12px}
+.ct{font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+
+/* ── GRID LAYOUT ── */
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(min-width:1100px){.grid3{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:600px){.grid3{grid-template-columns:repeat(2,1fr)}}
+
+/* ── STAT CARDS ── */
+.sc{background:var(--card);border-radius:10px;border:1px solid var(--brd);padding:16px}
+.sc .sv{font-family:'Syne',sans-serif;font-weight:800;font-size:1.9rem;margin-bottom:2px}
+.sc .sl{font-size:.68rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.4px}
+.sc.a .sv{color:var(--acc)}.sc.b .sv{color:var(--blue)}.sc.o .sv{color:var(--ora)}.sc.r .sv{color:var(--red)}
+
+/* ── FORMS ── */
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:.76rem;font-weight:600;color:var(--txt2);margin-bottom:5px}
+.fg input,.fg select,.fg textarea{
+  width:100%;background:var(--bg3);border:1px solid var(--brd);border-radius:9px;
+  color:var(--txt);padding:10px 13px;font-size:.88rem;font-family:'DM Sans',sans-serif;
+  transition:border-color .15s;outline:none
+}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--blue)}
+.fg select option{background:var(--bg2)}
+.fr{display:flex;gap:8px}.fr .fg{flex:1}
+
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:9px;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-weight:600;font-size:.85rem;
+  transition:.15s;white-space:nowrap
+}
+.bp{background:var(--acc);color:#090d18}.bp:hover{opacity:.88}
+.bs{background:var(--bg3);color:var(--txt);border:1px solid var(--brd)}.bs:hover{background:var(--card2)}
+.bd{background:var(--red);color:#fff}.bw{background:var(--warn);color:#090d18}
+.bsm{padding:6px 12px;font-size:.76rem;border-radius:7px}
+.bxs{padding:4px 9px;font-size:.7rem;border-radius:6px}
+.bbl{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── BADGES ── */
+.bdg{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:700}
+.bg{background:rgba(52,211,153,.13);color:var(--grn)}.br{background:rgba(244,63,94,.13);color:var(--red)}
+.by{background:rgba(251,191,36,.13);color:var(--warn)}.bb{background:rgba(14,165,233,.13);color:var(--blue)}
+.bc{background:rgba(0,229,195,.13);color:var(--acc)}.bo{background:rgba(249,115,22,.13);color:var(--ora)}
+
+/* ── TABLES ── */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--bg3);color:var(--txt2);font-weight:600;padding:9px 11px;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 11px;border-bottom:1px solid var(--brd);color:var(--txt);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+
+/* ── MODALS ── */
+.mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:400;align-items:flex-end;justify-content:center}
+.mov.on{display:flex}
+@media(min-width:600px){.mov{align-items:center}}
+.modal{
+  background:var(--bg2);border-radius:18px 18px 0 0;border:1px solid var(--brd);
+  border-bottom:none;width:100%;max-width:560px;max-height:94vh;overflow-y:auto;
+  padding-bottom:env(safe-area-inset-bottom)
+}
+@media(min-width:600px){.modal{border-radius:18px;border-bottom:1px solid var(--brd);max-height:90vh}}
+.mh{
+  padding:20px 18px 0;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--bg2);z-index:1
+}
+.mh::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:4px;background:var(--brd);border-radius:2px}
+@media(min-width:600px){.mh::before{display:none}}
+.mh h2{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem}
+.mb2{padding:16px 18px 22px}
+.mcl{cursor:pointer;background:var(--bg3);border:none;color:var(--txt2);width:30px;height:30px;border-radius:8px;font-size:1rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--brd)}
+
+/* ── SCANNER TABS ── */
+.scan-tab{
+  flex:1;padding:11px 8px;text-align:center;font-size:.8rem;font-weight:600;
+  color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:.15s
+}
+.scan-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+
+/* ── SCANNER ── */
+#pg-scanner{background:#000;padding:0}
+#svw{position:relative;flex:1;overflow:hidden}
+#scvid{width:100%;height:100%;object-fit:cover}
+#sov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#sfr{width:224px;height:224px;position:relative;box-shadow:0 0 0 9999px rgba(0,0,0,.52)}
+#sfr::before,#sfr::after,.sc-c{content:'';position:absolute;width:28px;height:28px;border-color:var(--acc);border-style:solid}
+#sfr::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:8px 0 0 0}
+#sfr::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 8px 0}
+.sc-tr{position:absolute;top:-2px;right:-2px;border-width:3px 3px 0 0;border-radius:0 8px 0 0}
+.sc-bl{position:absolute;bottom:-2px;left:-2px;border-width:0 0 3px 3px;border-radius:0 0 0 8px}
+#sln{position:absolute;width:188px;height:2px;background:linear-gradient(90deg,transparent,var(--acc),transparent);animation:sl 2s ease-in-out infinite;left:50%;transform:translateX(-50%);top:20px}
+@keyframes sl{0%,100%{top:12px;opacity:0}10%,90%{opacity:1}50%{top:204px}}
+#shit{margin-top:14px;background:rgba(0,0,0,.75);padding:7px 18px;border-radius:20px;color:#fff;font-size:.78rem;text-align:center;border:1px solid rgba(255,255,255,.1)}
+#sctrl{padding:12px 16px;background:rgba(0,0,0,.88);display:flex;align-items:center;gap:10px;flex-shrink:0}
+#sstat{color:var(--txt2);font-size:.76rem;flex:1;text-align:center}
+#cdov{position:absolute;inset:0;background:rgba(0,0,0,.72);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+#cdov.on{display:flex}
+#cdnum{font-family:'Syne',sans-serif;font-size:7rem;font-weight:800;color:var(--acc);line-height:1;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+#flash{position:absolute;inset:0;background:#fff;display:none;z-index:20}
+canvas#qsc{display:none}
+#cambk{display:none;position:absolute;inset:0;z-index:50;background:var(--bg);overflow-y:auto;padding:24px 18px 100px}
+
+/* ── EMP CARD ── */
+.ec{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--brd);margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.ec:hover{border-color:var(--blue)}
+.eav{width:46px;height:46px;border-radius:50%;object-fit:cover;background:var(--bg3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--acc)}
+.ei{flex:1;min-width:0}
+.en{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.es{font-size:.72rem;color:var(--txt2);margin-top:2px}
+
+/* ── TIMELINE ── */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:1px;background:var(--brd)}
+.tli{position:relative;margin-bottom:14px}
+.tli::before{content:'';position:absolute;left:-19px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--blue);border:2px solid var(--bg2)}
+.tlt{font-size:.67rem;color:var(--txt3);margin-bottom:1px}
+.tlv{font-weight:600;font-size:.85rem}
+.tls{font-size:.74rem;color:var(--txt2);margin-top:1px}
+
+/* ── TOGGLE ── */
+.tgw{display:flex;align-items:center;gap:8px}
+.tg{position:relative;width:44px;height:24px;flex-shrink:0}
+.tg input{opacity:0;width:0;height:0}
+.tgs{position:absolute;inset:0;background:var(--bg3);border-radius:24px;cursor:pointer;transition:.25s;border:1px solid var(--brd)}
+.tgs:before{content:'';position:absolute;height:16px;width:16px;left:3px;top:3px;background:var(--txt3);border-radius:50%;transition:.25s}
+.tg input:checked+.tgs{background:var(--acc);border-color:var(--acc)}
+.tg input:checked+.tgs:before{transform:translateX(20px);background:var(--bg)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:3px;background:var(--bg3);border-radius:9px;padding:3px;margin-bottom:14px}
+.tab{flex:1;padding:7px;text-align:center;border-radius:7px;cursor:pointer;font-size:.76rem;font-weight:600;color:var(--txt2);transition:.15s}
+.tab.on{background:var(--card);color:var(--acc)}
+
+/* ── CHIPS ── */
+.chips{display:flex;gap:6px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none;flex-wrap:wrap}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:5px 12px;border-radius:20px;border:1px solid var(--brd);background:var(--bg3);color:var(--txt2);font-size:.72rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:.15s}
+.chip.on{background:var(--acc);color:#090d18;border-color:var(--acc)}
+
+/* ── SCHEDULE TABLE ── */
+.sg-table{width:100%;border-collapse:collapse;font-size:.76rem}
+.sg-table th{background:var(--bg3);color:var(--txt2);padding:6px 8px;text-align:center;font-size:.63rem;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.sg-table td{padding:5px 4px;border-bottom:1px solid var(--brd);vertical-align:middle}
+.sg-table td:first-child{color:var(--txt2);font-weight:600;font-size:.72rem;padding-left:6px;white-space:nowrap}
+.sg-table input[type=time]{background:var(--bg3);border:1px solid var(--brd);border-radius:6px;color:var(--txt);padding:5px;font-size:.72rem;width:100%;font-family:'DM Sans',sans-serif;outline:none;text-align:center}
+.sg-table input[type=time]:focus{border-color:var(--blue)}
+.sg-table input[type=time]:disabled{opacity:.3}
+.sg-table .folgacheck{display:flex;align-items:center;gap:4px;justify-content:center;cursor:pointer;font-size:.68rem;color:var(--txt3)}
+.sg-table .folgacheck input{cursor:pointer;accent-color:var(--red)}
+
+/* ── PROGRESS ── */
+.pb{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:10px}
+.pf{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* ── PHOTO POPUP ── */
+#ppop{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;display:none;align-items:center;justify-content:center;padding:20px}
+#ppop.on{display:flex}
+#ppop img{max-width:100%;max-height:80vh;border-radius:10px;border:2px solid var(--acc)}
+#ppop-cl{position:absolute;top:16px;right:16px;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);border-radius:50%;width:36px;height:36px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:74px;left:50%;transform:translateX(-50%) translateY(14px);
+  background:var(--card2);border:1px solid var(--brd);border-radius:9px;
+  padding:10px 18px;font-size:.82rem;z-index:700;opacity:0;transition:all .25s;
+  pointer-events:none;white-space:nowrap;max-width:88vw;text-align:center;font-weight:600
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--grn);color:var(--grn)}
+#toast.er{border-color:var(--red);color:var(--red)}
+#toast.in{border-color:var(--blue);color:var(--blue)}
+
+/* ── SPINNER / OVERLAY DE CARREGAMENTO ── */
+#spin{position:fixed;inset:0;background:rgba(9,13,24,.7);z-index:800;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#spin.on{display:flex}
+.spin-ring{width:44px;height:44px;border:3px solid var(--brd);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-txt{color:var(--txt2);font-size:.82rem}
+
+/* ── UTILS ── */
+.fb{display:flex;align-items:center;justify-content:space-between}
+.fc{display:flex;align-items:center}
+.g6{gap:6px}.g8{gap:8px}.g10{gap:10px}.g12{gap:12px}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}
+.tc{text-align:center}.muted{color:var(--txt2)}.xs{font-size:.72rem}
+.fw{flex-wrap:wrap}
+.sep{height:1px;background:var(--brd);margin:12px 0}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>SISTEMA DE PONTO DIGITAL</h2>
-    <div class="camera-box">
-      <button id="btnAtivar">LIGAR CÂMERA 🎥</button>
-      <canvas id="canvas"></canvas>
-      <div id="timer">5</div>
+
+<!-- LOADING OVERLAY -->
+<div id="spin"><div class="spin-ring"></div><div class="spin-txt" id="spin-txt">Carregando…</div></div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button id="mbtn" onclick="toggleSB()" title="Menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <div class="logo">Ponto<s>QR</s></div>
+  <div id="epill" class="epill" onclick="goPage('entidades')">Carregando…</div>
+</div>
+
+<!-- LAYOUT PRINCIPAL -->
+<div id="layout">
+
+  <!-- SIDEBAR OVERLAY -->
+  <div id="sbo" onclick="toggleSB()"></div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sbh">
+      <div class="logo">Ponto<s>QR</s></div>
+      <div class="ver">v4.0 · Google Sheets + Drive</div>
     </div>
-    <div id="status">Aguardando ativação...</div>
+    <nav>
+      <div class="nsec">Principal</div>
+      <div class="ni on" onclick="go('dashboard')"><span class="ic">📊</span>Dashboard</div>
+      <div class="ni" onclick="go('scanner')"><span class="ic">📷</span>Scanner QR</div>
+      <div class="nsec">Cadastros</div>
+      <div class="ni" onclick="go('funcionarios')"><span class="ic">👷</span>Funcionários</div>
+      <div class="ni" onclick="go('entidades')"><span class="ic">🏗</span>Entidades / Obras</div>
+      <div class="ni" onclick="go('feriados')"><span class="ic">📅</span>Feriados</div>
+      <div class="nsec">Análises</div>
+      <div class="ni" onclick="go('relatorios')"><span class="ic">📋</span>Relatórios</div>
+      <div class="ni" onclick="go('banco')"><span class="ic">⏱</span>Banco de Horas</div>
+      <div class="ni" onclick="go('batidas')"><span class="ic">🕐</span>Registro de Ponto</div>
+      <div class="nsec">Sistema</div>
+      <div class="ni" onclick="go('config')"><span class="ic">⚙️</span>Configurações</div>
+    </nav>
   </div>
 
-  <script>
-    const video = document.createElement("video");
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const statusDiv = document.getElementById("status");
-    const timerDiv = document.getElementById("timer");
-    const btnAtivar = document.getElementById("btnAtivar");
-    let scanning = true;
+  <!-- MAIN CONTENT -->
+  <div id="main">
 
-    // 🔗 COLE AQUI A URL DO SEU APP SCRIPT (o link que termina em /exec)
-    const urlGoogle = "https://script.google.com/macros/s/AKfycbyYyszwogSCFktRY0hXLDQW9kAZVhI-1uXq72Rn2pkxSVpme_Tu1ODJIn9YIVQ79Uru/exec"; 
+    <!-- ══════════════ DASHBOARD ══════════════ -->
+    <div class="pg on" id="pg-dashboard">
+      <div class="ph">
+        <h1>Dashboard</h1>
+        <p id="dash-dt">—</p>
+      </div>
+      <div class="pc">
+        <div class="grid3 mb12" id="dash-stats">
+          <div class="sc a"><div class="sv" id="d-pr">—</div><div class="sl">Presentes</div></div>
+          <div class="sc r"><div class="sv" id="d-au">—</div><div class="sl">Ausentes</div></div>
+          <div class="sc o"><div class="sv" id="d-ex">—</div><div class="sl">Extras/mês</div></div>
+          <div class="sc b"><div class="sv" id="d-fa">—</div><div class="sl">Faltas/mês</div></div>
+        </div>
+        <div class="card mb">
+          <div class="ct">Últimas batidas hoje</div>
+          <div class="tl" id="dash-tl"><div class="muted xs tc" style="padding:16px">Carregando…</div></div>
+        </div>
+        <div class="card">
+          <div class="ct">Últimos 7 dias</div>
+          <div id="dash-7d"></div>
+        </div>
+      </div>
+    </div>
 
-    // Inicia a câmera após o clique (necessário para permissão do navegador)
-    btnAtivar.onclick = function() {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(stream => {
-          video.srcObject = stream;
-          video.setAttribute("playsinline", true);
-          video.play();
-          btnAtivar.style.display = "none";
-          canvas.style.display = "block";
-          statusDiv.innerText = "🔍 Buscando QR Code...";
-          requestAnimationFrame(tick);
-        })
-        .catch(err => {
-          statusDiv.innerText = "❌ Erro: Permita o acesso à câmera nas configurações.";
-          statusDiv.classList.add("erro");
-        });
-    };
+    <!-- ══════════════ SCANNER ══════════════ -->
+    <div class="pg" id="pg-scanner" style="background:var(--bg);padding:0">
 
-    function tick() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+      <!-- TABS: Câmera / Foto QR / Manual -->
+      <div id="scan-tabs" style="display:flex;background:var(--bg2);border-bottom:1px solid var(--brd);flex-shrink:0">
+        <div class="scan-tab on" id="stab-cam"    onclick="switchScanTab('cam')">📷 Câmera</div>
+        <div class="scan-tab"   id="stab-foto"   onclick="switchScanTab('foto')">🖼 Foto QR</div>
+        <div class="scan-tab"   id="stab-manual" onclick="switchScanTab('manual')">👆 Manual</div>
+      </div>
 
-        if (code && code.data) {
-          iniciarContagem(code.data);
-          return;
-        }
+      <!-- ── PAINEL CÂMERA ── -->
+      <div id="scan-cam-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;background:#000">
+        <div id="svw">
+          <video id="scvid" playsinline autoplay muted></video>
+          <canvas id="qsc"></canvas>
+          <div id="sov">
+            <div id="sfr">
+              <div class="sc-c sc-tr"></div>
+              <div class="sc-c sc-bl"></div>
+              <div id="sln"></div>
+            </div>
+            <div id="shit">Aponte para o QR Code do funcionário</div>
+          </div>
+          <div id="cdov">
+            <div style="color:var(--txt2);font-size:.88rem;margin-bottom:8px" id="cdname"></div>
+            <div id="cdnum">3</div>
+            <div style="color:var(--acc);font-size:.8rem;margin-top:8px">Tirando foto…</div>
+          </div>
+          <div id="flash"></div>
+          <!-- Câmera negada (permissão recusada no browser) -->
+          <div id="cambk">
+            <div style="max-width:320px;margin:0 auto;text-align:center;padding:24px">
+              <div style="font-size:2.5rem;margin-bottom:12px">📵</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:8px">Permissão negada</div>
+              <p style="color:var(--txt2);font-size:.8rem;line-height:1.7;margin-bottom:18px">
+                Clique no 🔒 na barra de endereço → <strong>Configurações do site</strong> → <strong>Câmera: Permitir</strong> → recarregue.
+              </p>
+              <button class="btn bp bbl" onclick="retryCam()">🔄 Tentar novamente</button>
+              <button class="btn bs bbl" style="margin-top:8px" onclick="switchScanTab('manual')">👆 Usar Registro Manual</button>
+            </div>
+          </div>
+        </div>
+        <div id="sctrl">
+          <button class="btn bs bsm" onclick="switchCam()">🔄 Câmera</button>
+          <div id="sstat" class="muted xs">Iniciando…</div>
+          <div class="tgw">
+            <label class="tg"><input type="checkbox" id="wmtog" onchange="toggleWM()"><span class="tgs"></span></label>
+            <span style="font-size:.72rem;color:var(--txt2)">Modo Parede</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAINEL FOTO QR ── -->
+      <div id="scan-foto-panel" style="display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)">
+        <div style="max-width:480px;margin:0 auto">
+          <div class="card mb12" style="border-color:var(--blue)">
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:6px">🖼 Escanear foto do QR Code</div>
+            <p style="color:var(--txt2);font-size:.78rem;line-height:1.6;margin-bottom:14px">
+              No celular: clique em <strong style="color:var(--warn)">Tirar Foto</strong> e aponte para o QR Code do funcionário.<br>
+              No computador: clique em <strong style="color:var(--acc)">Selecionar Imagem</strong> com a foto do QR.
+            </p>
+            <input type="file" id="qr-file-input" accept="image/*" style="display:none" onchange="lerQRdaFoto(event)">
+            <div style="display:flex;gap:10px">
+              <button class="btn bp" style="flex:1" onclick="abrirGaleria()">🖼 Selecionar Imagem</button>
+              <button class="btn bw" style="flex:1" onclick="abrirCamera()">📷 Tirar Foto</button>
+            </div>
+          </div>
+          <div id="qr-foto-resultado" style="display:none">
+            <div class="card mb12">
+              <canvas id="qr-foto-canvas" style="width:100%;max-height:260px;object-fit:contain;border-radius:8px;display:block;margin-bottom:10px"></canvas>
+              <div id="qr-foto-msg" style="font-size:.85rem;text-align:center;padding:10px;border-radius:8px"></div>
+            </div>
+          </div>
+          <div class="card mt12">
+            <div class="ct">Batidas de hoje</div>
+            <div id="foto-hoje-list"><div class="muted xs tc" style="padding:12px">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PAINEL MANUAL ── -->
+      <div id="scan-manual-panel" style="display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)">
+        <div style="max-width:480px;margin:0 auto">
+          <div class="ct">Registrar ponto manualmente</div>
+          <div class="fg mb12">
+            <label>🔍 Buscar funcionário (nome ou matrícula)</label>
+            <input type="text" id="manual-search" placeholder="Digite o nome ou matrícula…" oninput="filterManualList()" autocomplete="off">
+          </div>
+          <div id="manual-list" style="margin-bottom:16px"></div>
+          <div id="manual-confirm" style="display:none">
+            <div class="card" style="border-color:var(--acc)">
+              <div class="ct">Confirmar registro</div>
+              <div class="fc g12 mb12">
+                <div id="mcf-av" style="width:50px;height:50px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:var(--acc);flex-shrink:0"></div>
+                <div>
+                  <div style="font-weight:700" id="mcf-nome">—</div>
+                  <div class="muted xs" id="mcf-info">—</div>
+                  <div style="margin-top:6px">
+                    <span class="bdg bc" id="mcf-tipo">—</span>
+                    <span class="bdg bb" style="margin-left:6px" id="mcf-hora">—</span>
+                  </div>
+                </div>
+              </div>
+              <div class="fg mb8">
+                <label>📍 Observação (opcional)</label>
+                <input type="text" id="mcf-obs" placeholder="Ex: portaria, refeitório…">
+              </div>
+              <div class="fc g8">
+                <button class="btn bp" id="mcf-btn" onclick="confirmManualReg()">✅ Confirmar Ponto</button>
+                <button class="btn bs" onclick="cancelManualReg()">Cancelar</button>
+              </div>
+            </div>
+          </div>
+          <div class="card mt16">
+            <div class="ct">Batidas de hoje</div>
+            <div id="manual-hoje-list"><div class="muted xs tc" style="padding:12px">—</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ FUNCIONÁRIOS ══════════════ -->
+    <div class="pg" id="pg-funcionarios">
+      <div class="ph">
+        <h1>Funcionários</h1>
+        <p>Cadastro e QR Codes</p>
+      </div>
+      <div class="pc">
+        <div class="fb mb12">
+          <div class="chips" id="fchips"></div>
+          <button class="btn bp bsm" onclick="openMF(null)" style="flex-shrink:0;margin-left:8px">+ Novo</button>
+        </div>
+        <div id="flist"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ ENTIDADES ══════════════ -->
+    <div class="pg" id="pg-entidades">
+      <div class="ph">
+        <h1>Entidades / Obras</h1>
+        <p>Locais, horários e percentuais</p>
+      </div>
+      <div class="pc">
+        <div class="fb mb12">
+          <div></div>
+          <button class="btn bp bsm" onclick="openME(null)">+ Nova Entidade</button>
+        </div>
+        <div id="elist"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ FERIADOS ══════════════ -->
+    <div class="pg" id="pg-feriados">
+      <div class="ph"><h1>Feriados</h1><p>Nacionais e por entidade</p></div>
+      <div class="pc">
+        <div class="fb mb12">
+          <div></div>
+          <button class="btn bp bsm" onclick="openMFer(null)">+ Adicionar</button>
+        </div>
+        <div class="card"><div class="tw"><table id="ftable">
+          <thead><tr><th>Data</th><th>Nome</th><th>Tipo</th><th>Entidade</th><th></th></tr></thead>
+          <tbody id="ftbody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ RELATÓRIOS ══════════════ -->
+    <div class="pg" id="pg-relatorios">
+      <div class="ph"><h1>Relatórios</h1><p>Frequência e horas trabalhadas</p></div>
+      <div class="pc">
+        <div class="card mb">
+          <div class="fr">
+            <div class="fg"><label>Mês</label><input type="month" id="rel-mes"></div>
+            <div class="fg"><label>Funcionário</label><select id="rel-func"><option value="">Todos</option></select></div>
+            <div class="fg"><label>Entidade</label><select id="rel-ent"><option value="">Todas</option></select></div>
+          </div>
+          <button class="btn bp" onclick="loadRel()">🔍 Gerar Relatório</button>
+        </div>
+        <div id="rel-body"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ BANCO DE HORAS ══════════════ -->
+    <div class="pg" id="pg-banco">
+      <div class="ph"><h1>Banco de Horas</h1><p>Extras e saldo por funcionário</p></div>
+      <div class="pc">
+        <div class="card mb">
+          <div class="fg"><label>Mês de referência</label><input type="month" id="banco-mes"></div>
+          <button class="btn bp" onclick="loadBancoPage()">🔄 Atualizar</button>
+        </div>
+        <div id="banco-body"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ REGISTRO DE PONTO ══════════════ -->
+    <div class="pg" id="pg-batidas">
+      <div class="ph"><h1>Registro de Ponto</h1><p>Histórico de batidas</p></div>
+      <div class="pc">
+        <div class="card mb">
+          <div class="fr">
+            <div class="fg"><label>Data</label><input type="date" id="bat-data"></div>
+            <div class="fg"><label>Funcionário</label><select id="bat-func"><option value="">Todos</option></select></div>
+          </div>
+          <button class="btn bp bsm" onclick="loadBatidasPage()">🔍 Filtrar</button>
+        </div>
+        <div class="card"><div class="tw"><table>
+          <thead><tr><th>Data</th><th>Funcionário</th><th>Tipo</th><th>Hora</th><th>Local</th><th>Foto</th><th></th></tr></thead>
+          <tbody id="bat-tbody"></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════ CONFIGURAÇÕES ══════════════ -->
+    <div class="pg" id="pg-config">
+      <div class="ph"><h1>Configurações</h1><p>Dados da empresa e percentuais</p></div>
+      <div class="pc">
+
+        <!-- Banner sem URL -->
+        <div id="cfg-banner" style="display:none;background:rgba(251,191,36,.12);border:1px solid var(--warn);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:.8rem;color:var(--warn)">
+          ⚠️ <strong>URL do Apps Script não configurada.</strong> Os dados não serão salvos na planilha até você configurar abaixo.
+        </div>
+
+        <!-- URL DO GAS -->
+        <div class="card mb">
+          <div class="ct">https://script.google.com/macros/s/AKfycbzrlGh0SBrWj74kWGWRc0P4whRhuxAzrCWeiYCVlfw0l-Qq_kDv8smk0KnBczOWo4Ia/exec</div>
+          <div class="fg">
+            <label>URL /exec do seu Apps Script</label>
+            <input type="url" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:.75rem">
+          </div>
+          <p style="color:var(--txt2);font-size:.75rem;margin-bottom:12px;line-height:1.6">
+            Obtenha em: Apps Script → <strong>Implantar</strong> → Gerenciar implantações → copie a URL.<br>
+            Salva localmente no navegador — não é enviada para nenhum servidor.
+          </p>
+          <button class="btn bp" onclick="saveGasUrl()">💾 Salvar e Conectar</button>
+        </div>
+
+        <div class="card mb">
+          <div class="ct">Empresa</div>
+          <div class="fg"><label>Nome da empresa</label><input type="text" id="cfg-emp"></div>
+          <div class="fg"><label>CNPJ</label><input type="text" id="cfg-cnpj"></div>
+          <div class="fg"><label>Entidade padrão</label><select id="cfg-dent"></select></div>
+          <button class="btn bp" onclick="saveCfg()">💾 Salvar</button>
+        </div>
+        <div class="card">
+          <div class="ct">Percentuais de Hora Extra Padrão</div>
+          <div class="grid2">
+            <div class="fg"><label>Semana (%)</label><input type="number" id="g-ps" min="0" max="200"></div>
+            <div class="fg"><label>Sábado (%)</label><input type="number" id="g-psa" min="0" max="200"></div>
+            <div class="fg"><label>Domingo (%)</label><input type="number" id="g-pd" min="0" max="200"></div>
+            <div class="fg"><label>Feriado (%)</label><input type="number" id="g-pf" min="0" max="200"></div>
+            <div class="fg"><label>Noturno (%)</label><input type="number" id="g-pn" min="0" max="200"></div>
+            <div class="fg"><label>Limite Mensal (h)</label><input type="number" id="g-lm" min="0"></div>
+          </div>
+          <button class="btn bp" onclick="savePct()">💾 Salvar Percentuais</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#main -->
+</div><!-- /#layout -->
+
+<!-- BOTTOM NAV (mobile) -->
+<div id="bnav">
+  <div class="bn on" onclick="goPage('dashboard')"><div class="bi">📊</div><span>Dashboard</span></div>
+  <div class="bn" onclick="goPage('scanner')"><div class="bi">📷</div><span>Scanner</span></div>
+  <div class="bn" onclick="goPage('funcionarios')"><div class="bi">👷</div><span>Equipe</span></div>
+  <div class="bn" onclick="goPage('relatorios')"><div class="bi">📋</div><span>Relatório</span></div>
+  <div class="bn" onclick="goPage('config')"><div class="bi">⚙️</div><span>Config</span></div>
+</div>
+
+<!-- PHOTO POPUP -->
+<div id="ppop" onclick="document.getElementById('ppop').classList.remove('on')">
+  <img id="ppop-img" src="" alt="foto">
+  <button id="ppop-cl" onclick="document.getElementById('ppop').classList.remove('on')">✕</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══════════════ MODAIS ══════════════ -->
+
+<!-- Modal Funcionário -->
+<div class="mov" id="mf">
+  <div class="modal">
+    <div class="mh"><h2 id="mf-ttl">Funcionário</h2><button class="mcl" onclick="closeM('mf')">✕</button></div>
+    <div class="mb2">
+      <input type="hidden" id="mf-id">
+      <div class="fr">
+        <div class="fg"><label>Matrícula *</label><input type="text" id="mf-mat"></div>
+        <div class="fg"><label>CPF</label><input type="text" id="mf-cpf" placeholder="000.000.000-00"></div>
+      </div>
+      <div class="fg"><label>Nome completo *</label><input type="text" id="mf-nome"></div>
+      <div class="fg"><label>Cargo</label><input type="text" id="mf-cargo"></div>
+      <div class="fg"><label>Entidade / Obra</label><select id="mf-ent"></select></div>
+      <div class="fg">
+        <label>Foto (URL ou capturar)</label>
+        <input type="text" id="mf-foto" placeholder="URL da foto ou deixe em branco">
+        <img id="mf-prev" src="" style="display:none;width:72px;height:72px;border-radius:50%;object-fit:cover;margin-top:8px;border:2px solid var(--acc)">
+      </div>
+      <div class="fc g8 mt16">
+        <button class="btn bp" onclick="saveF()">💾 Salvar</button>
+        <button class="btn bs" onclick="closeM('mf')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhes Funcionário -->
+<div class="mov" id="mfd">
+  <div class="modal">
+    <div class="mh"><h2>Ficha do Funcionário</h2><button class="mcl" onclick="closeM('mfd')">✕</button></div>
+    <div class="mb2" id="mfd-body"></div>
+  </div>
+</div>
+
+<!-- Modal Entidade -->
+<div class="mov" id="me">
+  <div class="modal" style="max-width:640px">
+    <div class="mh"><h2 id="me-ttl">Entidade</h2><button class="mcl" onclick="closeM('me')">✕</button></div>
+    <div class="mb2">
+      <input type="hidden" id="me-id">
+      <div class="fg"><label>Nome *</label><input type="text" id="me-nome"></div>
+      <div class="fr">
+        <div class="fg"><label>Tipo</label>
+          <select id="me-tipo">
+            <option value="obra">🏗 Obra</option>
+            <option value="filial">🏢 Filial</option>
+            <option value="setor">🏬 Setor</option>
+            <option value="outro">📌 Outro</option>
+          </select>
+        </div>
+        <div class="fg"><label>Estado</label><input type="text" id="me-est" maxlength="2" placeholder="SP"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="ct">Percentuais de Hora Extra</div>
+      <div class="grid2">
+        <div class="fg"><label>Semana (%)</label><input type="number" id="me-ps" min="0" max="200"></div>
+        <div class="fg"><label>Sábado (%)</label><input type="number" id="me-psa" min="0" max="200"></div>
+        <div class="fg"><label>Domingo (%)</label><input type="number" id="me-pd" min="0" max="200"></div>
+        <div class="fg"><label>Feriado (%)</label><input type="number" id="me-pf" min="0" max="200"></div>
+        <div class="fg"><label>Noturno (%)</label><input type="number" id="me-pn" min="0" max="200"></div>
+        <div class="fg"><label>Limite Mensal (h)</label><input type="number" id="me-lm" min="0"></div>
+      </div>
+      <div class="sep"></div>
+      <div class="ct">Horário de Trabalho por Dia</div>
+      <div style="overflow-x:auto">
+        <table class="sg-table">
+          <thead><tr><th>Dia</th><th>Entrada</th><th>Almoço</th><th>Retorno</th><th>Saída</th><th>Folga</th></tr></thead>
+          <tbody id="sched-tbody"></tbody>
+        </table>
+      </div>
+      <div class="fc g8 mt12">
+        <button class="btn bs bsm" onclick="resetSched()">↺ Padrão</button>
+        <button class="btn bs bsm" onclick="copyDay(1,'wd')">📋 Seg→Dias úteis</button>
+        <button class="btn bs bsm" onclick="copyDay(1,'all')">📋 Seg→Todos</button>
+      </div>
+      <div class="fc g8 mt16">
+        <button class="btn bp" onclick="saveE()">💾 Salvar</button>
+        <button class="btn bs" onclick="closeM('me')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Feriado -->
+<div class="mov" id="mfer">
+  <div class="modal">
+    <div class="mh"><h2 id="mfer-ttl">Feriado</h2><button class="mcl" onclick="closeM('mfer')">✕</button></div>
+    <div class="mb2">
+      <input type="hidden" id="mfer-id">
+      <div class="fg"><label>Data *</label><input type="date" id="mfer-data"></div>
+      <div class="fg"><label>Nome *</label><input type="text" id="mfer-nome"></div>
+      <div class="fg"><label>Tipo</label>
+        <select id="mfer-tipo" onchange="toggleFerEnt()">
+          <option value="nacional">Nacional</option>
+          <option value="entidade">Por Entidade</option>
+        </select>
+      </div>
+      <div class="fg" id="mfer-ent-grp" style="display:none"><label>Entidade</label><select id="mfer-ent"></select></div>
+      <div class="fc g8 mt16">
+        <button class="btn bp" onclick="saveFer()">💾 Salvar</button>
+        <button class="btn bs" onclick="closeM('mfer')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Justificativa -->
+<div class="mov" id="mjus">
+  <div class="modal">
+    <div class="mh"><h2>Justificar Ausência</h2><button class="mcl" onclick="closeM('mjus')">✕</button></div>
+    <div class="mb2">
+      <input type="hidden" id="jus-funcid">
+      <div class="fg"><label>Funcionário</label><select id="jus-func"></select></div>
+      <div class="fr">
+        <div class="fg"><label>Data inicial</label><input type="date" id="jus-ini"></div>
+        <div class="fg"><label>Data final</label><input type="date" id="jus-fim"></div>
+      </div>
+      <div class="fg"><label>Tipo</label>
+        <select id="jus-tp">
+          <option value="atestado">Atestado Médico</option>
+          <option value="licenca">Licença</option>
+          <option value="ferias">Férias</option>
+          <option value="folga">Folga</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="fg"><label>Observação</label><textarea id="jus-obs" rows="2" style="resize:none"></textarea></div>
+      <div class="fc g8 mt16">
+        <button class="btn bp" onclick="saveJus()">💾 Salvar</button>
+        <button class="btn bs" onclick="closeM('mjus')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+//  CONFIGURAÇÃO — cole aqui a URL /exec do seu Apps Script
+// ══════════════════════════════════════════════════════════════
+var GAS_URL = localStorage.getItem('pqr_gasurl') || '';
+
+var DB = {
+  config: {}, entidades: [], funcionarios: [],
+  feriados: [], batidas: [], justificativas: []
+};
+var curPg      = 'dashboard';
+var DAYS_FULL  = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+var DAYS_SHORT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+// ══════════════════════════════════════════════════════════════
+//  COMUNICAÇÃO COM O BACKEND
+//  GET  → leitura (buscar dados)
+//  POST → escrita (registrar batida, salvar configs…)
+// ══════════════════════════════════════════════════════════════
+
+// callGet: busca dados via GET — retorna JSON normal (CORS funciona)
+function callGet(action, params, cb) {
+  if (!GAS_URL) { if (cb) cb(null); return; }
+  var url = GAS_URL + '?action=' + encodeURIComponent(action);
+  if (params) {
+    Object.keys(params).forEach(function(k) {
+      if (params[k] !== undefined)
+        url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(JSON.stringify(params[k]));
+    });
+  }
+  fetch(url)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data && data.error) toast('Erro: ' + data.error, 'er');
+      if (cb) cb(data);
+    })
+    .catch(function(err) {
+      toast('Erro ao buscar dados', 'er');
+      hideSpin();
+      if (cb) cb(null);
+    });
+}
+
+// callPost: envia dados via POST no-cors (igual ao exemplo do cliente)
+// O browser não lê a resposta, mas o GAS salva tudo na planilha
+function callPost(action, payload, cb) {
+  if (!GAS_URL) { if (cb) cb(null); return; }
+  fetch(GAS_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify({ action: action, payload: payload || {} })
+  })
+  .then(function() { if (cb) cb({ ok: true }); })
+  .catch(function(err) {
+    toast('Erro ao enviar: ' + err.message, 'er');
+    if (cb) cb(null);
+  });
+}
+
+// call: alias inteligente — GET para leituras, POST para escritas
+function call(action, payload, cb) {
+  var reads = ['getConfig','getEntidades','getFuncionarios','getFeriados',
+               'getJustificativas','getBatidas','getDashboard','getRelatorio','getBanco'];
+  if (reads.indexOf(action) >= 0) callGet(action, payload, cb);
+  else callPost(action, payload, cb);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INICIALIZAÇÃO
+// ══════════════════════════════════════════════════════════════
+window.addEventListener('load', function() {
+  if (!GAS_URL) {
+    document.getElementById('cfg-banner').style.display = 'block';
+    hideSpin();
+    loadDash();
+    updatePill();
+    return;
+  }
+  showSpin('Carregando dados…');
+  loadAllData(function() {
+    hideSpin();
+    loadDash();
+    updatePill();
+  });
+});
+
+function loadAllData(cb) {
+  var pending = 5;
+  function done() { if (--pending === 0 && cb) cb(); }
+  callGet('getConfig',      {},                  function(r) { if (r && !r.error) DB.config = r; done(); });
+  callGet('getEntidades',   {},                  function(r) { if (r && !r.error) DB.entidades = r || []; done(); });
+  callGet('getFuncionarios',{},                  function(r) { if (r && !r.error) DB.funcionarios = r || []; done(); });
+  callGet('getFeriados',    {},                  function(r) { if (r && !r.error) DB.feriados = r || []; done(); });
+  callGet('getBatidas',     { data: todayStr() },function(r) { if (r && !r.error) DB.batidas = r || []; done(); });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ══════════════════════════════════════════════════════════════
+function goPage(id) {
+  document.querySelectorAll('.pg').forEach(function(p){ p.classList.remove('on'); });
+  document.querySelectorAll('.bn').forEach(function(n){ n.classList.remove('on'); });
+  var pg = document.getElementById('pg-' + id);
+  if (pg) pg.classList.add('on');
+  curPg = id;
+  var bnMap = { dashboard:0, scanner:1, funcionarios:2, relatorios:3, config:4 };
+  if (bnMap[id] !== undefined) {
+    var bns = document.querySelectorAll('.bn');
+    if (bns[bnMap[id]]) bns[bnMap[id]].classList.add('on');
+  }
+  // Ações de página
+  if (id === 'dashboard')   loadDash();
+  if (id === 'scanner') {
+    switchScanTab('cam');
+  }
+  if (id === 'funcionarios') loadFuncs();
+  if (id === 'entidades')   loadEnts();
+  if (id === 'feriados')    loadFers();
+  if (id === 'relatorios')  initRelPage();
+  if (id === 'banco')       initBancoPage();
+  if (id === 'batidas')     initBatidasPage();
+  if (id === 'config')      loadCfg();
+  if (id !== 'scanner')     stopCam();
+  updatePill();
+}
+function go(id) { goPage(id); toggleSB(); }
+function toggleSB() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sbo').classList.toggle('show');
+}
+function openM(id) { document.getElementById(id).classList.add('on'); }
+function closeM(id) { document.getElementById(id).classList.remove('on'); }
+function updatePill() {
+  var ent = DB.entidades.find(function(e){ return e.id === DB.config.defaultEntity; });
+  document.getElementById('epill').textContent = ent ? ent.nome : '—';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOADING SPINNER
+// ══════════════════════════════════════════════════════════════
+function showSpin(txt) {
+  document.getElementById('spin-txt').textContent = txt || 'Carregando…';
+  document.getElementById('spin').classList.add('on');
+}
+function hideSpin() { document.getElementById('spin').classList.remove('on'); }
+
+// ══════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function todayStr() { return new Date().toISOString().substr(0,10); }
+function fmtDate(d) { if (!d) return '—'; return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR'); }
+function fmtTime(d) { if (!d) return '—'; return new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function fmtH(m) {
+  if (isNaN(m) || m === undefined) return '0h00';
+  var h = Math.floor(Math.abs(m)/60), mm = Math.abs(m) % 60;
+  return (m < 0 ? '-' : '') + h + 'h' + (mm < 10 ? '0' : '') + mm;
+}
+function t2m(s) { if (!s) return 0; var p = s.split(':'); return parseInt(p[0])*60+(parseInt(p[1])||0); }
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'on ' + (type || 'in');
+  setTimeout(function(){ t.className = ''; }, 3200);
+}
+function showPhoto(src) {
+  document.getElementById('ppop-img').src = src;
+  document.getElementById('ppop').classList.add('on');
+}
+function refreshSels() {
+  var opts = '<option value="">— Selecionar —</option>' +
+    DB.entidades.map(function(e){ return '<option value="' + e.id + '">' + e.nome + '</option>'; }).join('');
+  ['mf-ent','cfg-dent','mfer-ent','jus-func'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      if (id === 'jus-func') {
+        el.innerHTML = DB.funcionarios.map(function(f){
+          return '<option value="' + f.id + '">' + f.nome + '</option>';
+        }).join('');
+      } else {
+        el.innerHTML = opts;
       }
-      // Processa 4x por segundo para não sobrecarregar o tablet
-      setTimeout(() => { if (scanning) requestAnimationFrame(tick); }, 250);
     }
-
-    function iniciarContagem(qrData) {
-      scanning = false;
-      let count = 5;
-      timerDiv.style.display = "block";
-      timerDiv.innerText = count;
-      statusDiv.innerText = "✅ Identificado! Prepare o sorriso... 😁";
-
-      const countdown = setInterval(() => {
-        count--;
-        timerDiv.innerText = count;
-        if (count <= 0) {
-          clearInterval(countdown);
-          timerDiv.style.display = "none";
-          registrarPonto(qrData);
-        }
-      }, 1000);
+  });
+  // Selects de relatório
+  ['rel-func','bat-func'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = '<option value="">Todos</option>' +
+        DB.funcionarios.map(function(f){ return '<option value="' + f.id + '">' + f.nome + '</option>'; }).join('');
     }
+  });
+  ['rel-ent'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = '<option value="">Todas</option>' + opts.replace('<option value="">— Selecionar —</option>','');
+    }
+  });
+}
 
-    function registrarPonto(qrData) {
-      // Tira a foto do frame atual
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUri = canvas.toDataURL('image/png');
-      
-      statusDiv.innerText = "📤 Enviando dados...";
+// ══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════════
+function loadDash() {
+  var now = new Date();
+  document.getElementById('dash-dt').textContent = now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  showSpin('Carregando dashboard…');
+  call('getDashboard', {}, function(r) {
+    hideSpin();
+    if (!r) return;
+    document.getElementById('d-pr').textContent = r.presentes;
+    document.getElementById('d-au').textContent = r.ausentes;
+    document.getElementById('d-ex').textContent = fmtH(r.extrasMins);
+    document.getElementById('d-fa').textContent = r.faltas;
 
-      // Envia para o Google Apps Script via POST
-      fetch(urlGoogle, {
-        method: 'POST',
-        mode: 'no-cors', 
-        body: JSON.stringify({ qr: qrData, image: dataUri })
-      }).then(() => {
-        statusDiv.innerText = "🎉 Ponto registrado com sucesso!";
-        statusDiv.classList.add("sucesso");
-        setTimeout(resetarInterface, 4000);
-      }).catch(err => {
-        statusDiv.innerText = "❌ Erro ao enviar para a planilha.";
-        statusDiv.classList.add("erro");
-        setTimeout(resetarInterface, 4000);
+    var tmap = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+    var tl = document.getElementById('dash-tl');
+    if (!r.batidasHoje || !r.batidasHoje.length) {
+      tl.innerHTML = '<div class="muted xs tc" style="padding:16px">Nenhuma batida hoje</div>';
+    } else {
+      tl.innerHTML = r.batidasHoje.map(function(b) {
+        var f = DB.funcionarios.find(function(fn){ return fn.id === b.funcId; });
+        return '<div class="tli">' +
+          '<div class="tlt">' + fmtTime(b.timestamp) + '</div>' +
+          '<div class="tlv">' + (f ? f.nome.split(' ')[0] : b.funcId) + ' — ' + (tmap[b.tipo]||b.tipo) + '</div>' +
+          '<div class="tls">' + (b.localizacao||'—') + '</div>' +
+          (b.fotoUrl ? '<img src="' + b.fotoUrl + '" onclick="showPhoto(\'' + b.fotoUrl + '\')" style="width:38px;height:38px;border-radius:6px;object-fit:cover;margin-top:5px;cursor:pointer;border:1px solid var(--brd)">' : '') +
+          '</div>';
+      }).join('');
+    }
+    // 7 dias
+    var el7 = document.getElementById('dash-7d');
+    el7.innerHTML = (r.ultimos7 || []).map(function(d) {
+      var dt = new Date(d.data + 'T12:00:00');
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">' +
+        '<div class="xs muted">' + dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'}) + '</div>' +
+        '<div class="xs" style="color:' + (d.presentes > 0 ? 'var(--grn)' : 'var(--txt3)') + '">' + d.presentes + ' presente' + (d.presentes !== 1 ? 's' : '') + '</div>' +
+        '</div>';
+    }).join('');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CÂMERA / SCANNER
+// ══════════════════════════════════════════════════════════════
+var stream = null, scanInt = null, facing = 'environment', wallMode = false, wallCD = false;
+
+async function initCam() {
+  if (stream) return;
+  document.getElementById('cambk').style.display = 'none';
+  try { await startCam(facing); }
+  catch(e) {
+    if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError') {
+      document.getElementById('cambk').style.display = 'block';
+      document.getElementById('sstat').textContent = '🔒 Câmera bloqueada';
+      atualizarLinkCam();
+    } else {
+      document.getElementById('sstat').textContent = '⚠ ' + e.message;
+    }
+  }
+}
+async function startCam(f) {
+  stopCam();
+  var tries = [
+    { video: { facingMode: { exact: f } }, audio: false },
+    { video: { facingMode: f }, audio: false },
+    { video: true, audio: false }
+  ];
+  var last;
+  for (var i = 0; i < tries.length; i++) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(tries[i]);
+      var v = document.getElementById('scvid'); v.srcObject = stream; await v.play();
+      document.getElementById('sstat').textContent = f === 'environment' ? '📷 Câmera traseira' : '🤳 Câmera frontal';
+      startScan(); return;
+    } catch(e) { last = e; if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') throw e; }
+  }
+  throw last;
+}
+function stopCam() {
+  if (scanInt) { clearInterval(scanInt); scanInt = null; }
+  if (stream)  { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+}
+function switchCam() { facing = facing === 'environment' ? 'user' : 'environment'; startCam(facing); }
+function retryCam()  { document.getElementById('cambk').style.display = 'none'; stream = null; initCam(); }
+
+function atualizarLinkCam() {
+  if (!WEBAPP_URL) return;
+  var el = document.getElementById('cambk-urltext');
+  var al = document.getElementById('cambk-alink');
+  if (el) el.textContent = WEBAPP_URL;
+  if (al) al.href = WEBAPP_URL;
+}
+
+function copiarUrlCam() {
+  if (!WEBAPP_URL) { toast('URL ainda não carregada', 'er'); return; }
+  navigator.clipboard.writeText(WEBAPP_URL)
+    .then(function(){ toast('URL copiada!', 'ok'); })
+    .catch(function(){
+      // fallback para browsers sem clipboard API
+      var ta = document.createElement('textarea');
+      ta.value = WEBAPP_URL; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('URL copiada!', 'ok');
+    });
+}
+
+function openInNewWindow() {
+  if (!WEBAPP_URL) { toast('URL ainda carregando, tente em 2s', 'er'); return; }
+  var win = window.open(WEBAPP_URL, '_blank');
+  if (!win) toast('Popup bloqueado — copie a URL e abra manualmente', 'er');
+}
+function toggleWM() {
+  wallMode = document.getElementById('wmtog').checked;
+  toast(wallMode ? '⚙ Modo Parede ativo' : 'Modo Parede desativado');
+}
+function startScan() {
+  var vid = document.getElementById('scvid'), cv = document.getElementById('qsc');
+  var ctx = cv.getContext('2d');
+  scanInt = setInterval(function() {
+    if (vid.readyState !== vid.HAVE_ENOUGH_DATA || wallCD) return;
+    cv.width = vid.videoWidth; cv.height = vid.videoHeight;
+    ctx.drawImage(vid, 0, 0);
+    var img = ctx.getImageData(0, 0, cv.width, cv.height);
+    var code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+    if (code) processQR(code.data);
+  }, 250);
+}
+function processQR(data) {
+  var empId = null;
+  try { var p = JSON.parse(data); empId = p.id || p.matricula; } catch(e) { empId = data; }
+  var func = DB.funcionarios.find(function(f){ return f.id === empId || f.matricula === empId; });
+  if (!func) {
+    document.getElementById('shit').textContent = '❌ QR não reconhecido';
+    setTimeout(function(){ document.getElementById('shit').textContent = 'Aponte para o QR Code do funcionário'; }, 2000);
+    return;
+  }
+  if (wallMode) startCountdown(func);
+  else doReg(func, null);
+}
+function startCountdown(func) {
+  if (wallCD) return; wallCD = true;
+  var cdo = document.getElementById('cdov'), cdn = document.getElementById('cdnum');
+  document.getElementById('cdname').textContent = func.nome;
+  cdo.classList.add('on'); cdn.textContent = 2;
+  var c = 2;
+  var t = setInterval(function() {
+    c--;
+    if (c <= 0) {
+      clearInterval(t);
+      var v = document.getElementById('scvid'), cv2 = document.createElement('canvas');
+      cv2.width = v.videoWidth; cv2.height = v.videoHeight; cv2.getContext('2d').drawImage(v, 0, 0);
+      var photo = cv2.toDataURL('image/jpeg', .65);
+      var fl = document.getElementById('flash'); fl.style.display = 'block'; setTimeout(function(){ fl.style.display='none'; }, 180);
+      cdo.classList.remove('on');
+      doReg(func, photo);
+      setTimeout(function(){ wallCD = false; }, 3000);
+    } else cdn.textContent = c;
+  }, 1000);
+}
+function nextPunch(funcId, ds) {
+  var seq = ['entrada','almoco_saida','almoco_retorno','saida'];
+  var today_bats = DB.batidas.filter(function(b){ return b.funcId === funcId && b.data === ds; })
+    .sort(function(a,b){ return a.timestamp < b.timestamp ? -1 : 1; });
+  if (!today_bats.length) return 'entrada';
+  var last = today_bats[today_bats.length - 1];
+  return seq[(seq.indexOf(last.tipo) + 1) % seq.length];
+}
+function doReg(func, photo, obsExtra, cb) {
+  var now = new Date(), ds = now.toISOString().substr(0, 10);
+  var tipo = nextPunch(func.id, ds);
+  var tl = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída p/ Almoço', almoco_retorno:'Retorno Almoço' };
+
+  var doSave = function(loc, fotoUrl) {
+    var locFinal = obsExtra ? (loc ? loc + ' · ' + obsExtra : obsExtra) : loc;
+    var bat = {
+      funcId: func.id,
+      entidadeId: func.entidadeId || func.entidade || DB.config.defaultEntity || '',
+      data: ds,
+      timestamp: now.toISOString(),
+      tipo: tipo,
+      localizacao: locFinal || '',
+      fotoUrl: fotoUrl || '',
+      device: navigator.userAgent.substr(0, 80)
+    };
+    DB.batidas.push(Object.assign({ id: '_tmp_' + uid() }, bat));
+    call('registrarBatida', bat, function(r) {
+      if (r && r.ok) {
+        toast('✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo], 'ok');
+        var el = document.getElementById('shit');
+        if (el) { el.textContent = '✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo]; setTimeout(function(){ el.textContent = 'Aponte para o QR Code do funcionário'; }, 3000); }
+      }
+      if (cb) cb(r);
+    });
+  };
+
+  var saveWithLoc = function(loc) {
+    if (photo) {
+      call('uploadFoto', { base64: photo, funcId: func.id, funcNome: func.nome, data: ds, tipo: tipo }, function(r) {
+        doSave(loc, r && r.url ? r.url : '');
       });
+    } else {
+      doSave(loc, '');
+    }
+  };
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(p){ saveWithLoc('📍 ' + p.coords.latitude.toFixed(5) + ', ' + p.coords.longitude.toFixed(5)); },
+      function()  { saveWithLoc(null); },
+      { timeout: 3000 }
+    );
+  } else {
+    saveWithLoc(null);
+  }
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && curPg === 'scanner') stopCam();
+  else if (!document.hidden && curPg === 'scanner') initCam();
+});
+
+// ══════════════════════════════════════════════════════════════
+//  SCANNER TABS (câmera / manual)
+// ══════════════════════════════════════════════════════════════
+var curScanTab = 'cam';
+function switchScanTab(tab) {
+  curScanTab = tab;
+  ['cam','foto','manual'].forEach(function(t) {
+    document.getElementById('stab-' + t).classList.toggle('on', t === tab);
+    var panel = document.getElementById('scan-' + t + '-panel');
+    if (panel) panel.style.display = (t === tab) ? 'flex' : 'none';
+  });
+  if (tab === 'cam') initCam();
+  else {
+    stopCam();
+    if (tab === 'manual') { renderManualList(); renderManualHoje(); }
+    if (tab === 'foto')   { renderFotoHoje(); }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FOTO QR — lê QR Code de uma imagem/foto
+// ══════════════════════════════════════════════════════════════
+function abrirGaleria() {
+  var inp = document.getElementById('qr-file-input');
+  inp.removeAttribute('capture'); inp.click();
+}
+function abrirCamera() {
+  var inp = document.getElementById('qr-file-input');
+  inp.setAttribute('capture', 'environment'); inp.click();
+}
+function lerQRdaFoto(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var resDiv = document.getElementById('qr-foto-resultado');
+  var msgDiv = document.getElementById('qr-foto-msg');
+  var canvas = document.getElementById('qr-foto-canvas');
+  resDiv.style.display = 'block';
+  msgDiv.textContent = '🔍 Analisando imagem…';
+  msgDiv.style.background = 'var(--bg3)';
+  msgDiv.style.color = 'var(--txt2)';
+
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = function() {
+    var maxW = 600, maxH = 600;
+    var w = img.width, h = img.height;
+    if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+    if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+
+    var imageData = ctx.getImageData(0, 0, w, h);
+    var code = jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' });
+
+    if (!code) {
+      msgDiv.textContent = '❌ QR Code não encontrado na imagem. Tente uma foto mais nítida e centrada.';
+      msgDiv.style.background = 'rgba(244,63,94,.1)';
+      msgDiv.style.color = 'var(--red)';
+      // Limpar input para permitir nova tentativa
+      event.target.value = '';
+      return;
     }
 
-    function resetarInterface() {
-      scanning = true;
-      statusDiv.innerText = "🔍 Buscando QR Code...";
-      statusDiv.classList.remove("sucesso", "erro");
-      requestAnimationFrame(tick);
+    // QR encontrado — destacar no canvas
+    var loc = code.location;
+    ctx.strokeStyle = '#00e5c3'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(loc.topLeftCorner.x,     loc.topLeftCorner.y);
+    ctx.lineTo(loc.topRightCorner.x,    loc.topRightCorner.y);
+    ctx.lineTo(loc.bottomRightCorner.x, loc.bottomRightCorner.y);
+    ctx.lineTo(loc.bottomLeftCorner.x,  loc.bottomLeftCorner.y);
+    ctx.closePath(); ctx.stroke();
+
+    // Processar como se fosse scan ao vivo
+    var empId = null;
+    try { var p = JSON.parse(code.data); empId = p.id || p.matricula; } catch(e) { empId = code.data; }
+    var func = DB.funcionarios.find(function(f){ return f.id === empId || f.matricula === empId; });
+
+    if (!func) {
+      msgDiv.textContent = '❌ Funcionário não encontrado. QR lido: ' + code.data;
+      msgDiv.style.background = 'rgba(244,63,94,.1)';
+      msgDiv.style.color = 'var(--red)';
+      event.target.value = '';
+      return;
     }
-  </script>
+
+    var tmap = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída p/ Almoço', almoco_retorno:'Retorno Almoço' };
+    var tipo = nextPunch(func.id, todayStr());
+    msgDiv.textContent = '✅ ' + func.nome + ' — ' + (tmap[tipo]||tipo) + ' registrado!';
+    msgDiv.style.background = 'rgba(52,211,153,.1)';
+    msgDiv.style.color = 'var(--grn)';
+    event.target.value = '';
+
+    doReg(func, null, null, function() { renderFotoHoje(); });
+  };
+  img.onerror = function() {
+    msgDiv.textContent = '❌ Erro ao carregar a imagem.';
+    msgDiv.style.color = 'var(--red)';
+    event.target.value = '';
+  };
+  img.src = url;
+}
+
+function renderFotoHoje() {
+  var today = todayStr();
+  var bh = DB.batidas.filter(function(b){ return b.data === today; })
+    .sort(function(a,b){ return a.timestamp < b.timestamp ? -1 : 1; });
+  var tmap = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+  var el = document.getElementById('foto-hoje-list');
+  if (!el) return;
+  if (!bh.length) { el.innerHTML = '<div class="muted xs tc" style="padding:12px">Nenhuma batida hoje</div>'; return; }
+  el.innerHTML = bh.slice(-15).reverse().map(function(b) {
+    var f = DB.funcionarios.find(function(fn){ return fn.id === b.funcId; });
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">' +
+      '<div><div style="font-weight:600;font-size:.85rem">' + (f ? f.nome.split(' ')[0]+' '+f.nome.split(' ').slice(-1)[0] : b.funcId) + '</div>' +
+      '<div class="muted xs">' + (tmap[b.tipo]||b.tipo) + '</div></div>' +
+      '<div class="muted xs">' + fmtTime(b.timestamp) + '</div></div>';
+  }).join('');
+}
+var manualSelectedFunc = null;
+
+function renderManualList(filter) {
+  var list = document.getElementById('manual-list');
+  var funcs = DB.funcionarios;
+  if (filter) {
+    var q = filter.toLowerCase();
+    funcs = funcs.filter(function(f) {
+      return f.nome.toLowerCase().includes(q) || (f.matricula||'').toLowerCase().includes(q);
+    });
+  }
+  if (!funcs.length) {
+    list.innerHTML = '<div class="muted xs tc" style="padding:16px">Nenhum funcionário encontrado</div>';
+    return;
+  }
+  var today = todayStr();
+  var tmap  = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+  list.innerHTML = funcs.map(function(f) {
+    var ent = DB.entidades.find(function(e){ return e.id === (f.entidadeId||f.entidade); });
+    var prox = nextPunch(f.id, today);
+    var av = f.fotoUrl
+      ? '<img src="' + f.fotoUrl + '" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+      : '<div style="width:42px;height:42px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:\'Syne\',sans-serif;font-weight:700;font-size:1rem;color:var(--acc);flex-shrink:0">' + (f.nome||'?')[0] + '</div>';
+    return '<div class="ec" style="cursor:pointer" onclick="selectManualFunc(\'' + f.id + '\')">' +
+      av + '<div class="ei">' +
+      '<div class="en">' + f.nome + '</div>' +
+      '<div class="es">' + (f.cargo||'—') + (ent ? ' · ' + ent.nome : '') + '</div>' +
+      '</div>' +
+      '<span class="bdg bc" style="flex-shrink:0;font-size:.65rem">' + (tmap[prox]||prox) + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function filterManualList() {
+  var q = document.getElementById('manual-search').value.trim();
+  renderManualList(q || null);
+  document.getElementById('manual-confirm').style.display = 'none';
+  manualSelectedFunc = null;
+}
+
+function selectManualFunc(fid) {
+  var f = DB.funcionarios.find(function(fn){ return fn.id === fid; });
+  if (!f) return;
+  manualSelectedFunc = f;
+  var today = todayStr();
+  var prox  = nextPunch(f.id, today);
+  var tmap  = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída p/ Almoço', almoco_retorno:'Retorno Almoço' };
+
+  var avEl = document.getElementById('mcf-av');
+  avEl.textContent = f.nome[0];
+  document.getElementById('mcf-nome').textContent = f.nome;
+  var ent = DB.entidades.find(function(e){ return e.id === (f.entidadeId||f.entidade); });
+  document.getElementById('mcf-info').textContent = (f.cargo||'—') + (ent ? ' · ' + ent.nome : '');
+  document.getElementById('mcf-tipo').textContent = tmap[prox] || prox;
+  document.getElementById('mcf-hora').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('mcf-obs').value = '';
+  document.getElementById('manual-confirm').style.display = 'block';
+  document.getElementById('manual-confirm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelManualReg() {
+  manualSelectedFunc = null;
+  document.getElementById('manual-confirm').style.display = 'none';
+}
+
+function confirmManualReg() {
+  if (!manualSelectedFunc) return;
+  var btn = document.getElementById('mcf-btn');
+  btn.disabled = true; btn.textContent = '⏳ Registrando…';
+  var obs = document.getElementById('mcf-obs').value.trim();
+  doReg(manualSelectedFunc, null, obs || null, function() {
+    btn.disabled = false; btn.textContent = '✅ Confirmar Ponto';
+    manualSelectedFunc = null;
+    document.getElementById('manual-confirm').style.display = 'none';
+    document.getElementById('manual-search').value = '';
+    renderManualList();
+    renderManualHoje();
+  });
+}
+
+function renderManualHoje() {
+  var today = todayStr();
+  var bh = DB.batidas.filter(function(b){ return b.data === today; })
+    .sort(function(a,b){ return a.timestamp < b.timestamp ? -1 : 1; });
+  var tmap = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+  var el = document.getElementById('manual-hoje-list');
+  if (!bh.length) { el.innerHTML = '<div class="muted xs tc" style="padding:12px">Nenhuma batida hoje</div>'; return; }
+  el.innerHTML = bh.slice(-15).reverse().map(function(b) {
+    var f = DB.funcionarios.find(function(fn){ return fn.id === b.funcId; });
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd)">' +
+      '<div><div style="font-weight:600;font-size:.85rem">' + (f ? f.nome.split(' ')[0] + ' ' + f.nome.split(' ').slice(-1)[0] : b.funcId) + '</div>' +
+      '<div class="muted xs">' + (tmap[b.tipo]||b.tipo) + '</div></div>' +
+      '<div class="muted xs">' + fmtTime(b.timestamp) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FUNCIONÁRIOS
+// ══════════════════════════════════════════════════════════════
+function loadFuncs() {
+  var ch = document.getElementById('fchips');
+  ch.innerHTML = '<div class="chip on" onclick="filt(\'all\',this)">Todos</div>' +
+    DB.entidades.map(function(e){ return '<div class="chip" onclick="filt(\'' + e.id + '\',this)">' + e.nome + '</div>'; }).join('');
+  renderFL('all');
+  refreshSels();
+}
+function filt(id, el) {
+  document.querySelectorAll('#fchips .chip').forEach(function(c){ c.classList.remove('on'); });
+  el.classList.add('on'); renderFL(id);
+}
+function renderFL(eid) {
+  var list = document.getElementById('flist');
+  var funcs = DB.funcionarios;
+  if (eid !== 'all') funcs = funcs.filter(function(f){ return f.entidadeId === eid || f.entidade === eid; });
+  if (!funcs.length) { list.innerHTML = '<div class="muted xs tc" style="padding:32px">Nenhum funcionário</div>'; return; }
+  list.innerHTML = funcs.map(function(f) {
+    var ent = DB.entidades.find(function(e){ return e.id === (f.entidadeId || f.entidade); });
+    var av = f.fotoUrl ? '<img src="' + f.fotoUrl + '" class="eav" style="object-fit:cover">' :
+                         '<div class="eav">' + (f.nome || '?')[0].toUpperCase() + '</div>';
+    return '<div class="ec" onclick="openFD(\'' + f.id + '\')">' + av +
+      '<div class="ei"><div class="en">' + f.nome + '</div>' +
+      '<div class="es">' + (f.cargo||'—') + ' · Mat: ' + (f.matricula||'—') + '</div>' +
+      '<div class="es">' + (ent ? ent.nome : 'Sem entidade') + '</div></div>' +
+      '<button class="btn bs bxs" onclick="event.stopPropagation();openMF(\'' + f.id + '\')">✏️</button></div>';
+  }).join('');
+}
+function openMF(id) {
+  refreshSels();
+  if (id) {
+    var f = DB.funcionarios.find(function(fn){ return fn.id === id; });
+    document.getElementById('mf-ttl').textContent = 'Editar Funcionário';
+    document.getElementById('mf-id').value = id;
+    document.getElementById('mf-mat').value = f.matricula || '';
+    document.getElementById('mf-cpf').value = f.cpf || '';
+    document.getElementById('mf-nome').value = f.nome || '';
+    document.getElementById('mf-cargo').value = f.cargo || '';
+    document.getElementById('mf-ent').value = f.entidadeId || f.entidade || '';
+    document.getElementById('mf-foto').value = f.fotoUrl || '';
+    var p = document.getElementById('mf-prev');
+    if (f.fotoUrl) { p.src = f.fotoUrl; p.style.display = 'block'; } else p.style.display = 'none';
+  } else {
+    document.getElementById('mf-ttl').textContent = 'Novo Funcionário';
+    document.getElementById('mf-id').value = '';
+    ['mf-mat','mf-cpf','mf-nome','mf-cargo','mf-foto'].forEach(function(x){ document.getElementById(x).value=''; });
+    document.getElementById('mf-ent').value = '';
+    document.getElementById('mf-prev').style.display = 'none';
+  }
+  openM('mf');
+}
+function saveF() {
+  var nome = document.getElementById('mf-nome').value.trim();
+  var mat  = document.getElementById('mf-mat').value.trim();
+  if (!nome || !mat) { toast('Nome e matrícula obrigatórios', 'er'); return; }
+  var eid  = document.getElementById('mf-id').value;
+  var data = {
+    id: eid || undefined,
+    nome: nome, matricula: mat,
+    cpf:       document.getElementById('mf-cpf').value.trim(),
+    cargo:     document.getElementById('mf-cargo').value.trim(),
+    entidadeId: document.getElementById('mf-ent').value,
+    fotoUrl:   document.getElementById('mf-foto').value.trim()
+  };
+  showSpin('Salvando…');
+  call('saveFuncionario', data, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      if (!eid) data.id = r.id;
+      var idx = DB.funcionarios.findIndex(function(f){ return f.id === (eid || r.id); });
+      if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
+      else DB.funcionarios.push(data);
+      closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
+    }
+  });
+}
+function openFD(id) {
+  var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
+  var ent = DB.entidades.find(function(e){ return e.id === (f.entidadeId || f.entidade); });
+  var qrData = JSON.stringify({ id: f.id, matricula: f.matricula, nome: f.nome });
+  var sched = (ent && ent.schedule) ? ent.schedule : defaultSchedArr();
+  var schedHtml = sched.map(function(s, i) {
+    if (s.folga) return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--brd);font-size:.74rem"><span class="muted">' + DAYS_FULL[i] + '</span><span class="bdg br">Folga</span></div>';
+    var jm = jornadaMinsArr(sched, i);
+    return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--brd);font-size:.74rem"><span class="muted">' + DAYS_FULL[i] + '</span><span>' + (s.entrada||'?') + ' → ' + (s.saida||'?') + ' <span class="muted">(' + fmtH(jm) + ')</span></span></div>';
+  }).join('');
+  document.getElementById('mfd-body').innerHTML =
+    '<div class="fc g12" style="margin-bottom:14px">' +
+    (f.fotoUrl ? '<img src="' + f.fotoUrl + '" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid var(--acc);flex-shrink:0">' :
+     '<div style="width:58px;height:58px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:\'Syne\',sans-serif;font-weight:700;font-size:1.4rem;color:var(--acc);flex-shrink:0">' + f.nome[0] + '</div>') +
+    '<div><div style="font-weight:700">' + f.nome + '</div><div class="muted xs">' + (f.cargo||'—') + ' · Mat: ' + (f.matricula||'—') + '</div><div class="muted xs">' + (ent ? ent.nome : 'Sem entidade') + ' · CPF: ' + (f.cpf||'—') + '</div></div></div>' +
+    '<div class="tc mb12"><div id="qr-' + id + '" style="display:inline-block;background:#fff;padding:10px;border-radius:8px"></div></div>' +
+    '<div class="fc g6 fw" style="margin-bottom:14px">' +
+    '<button class="btn bs bsm" onclick="dlQR(\'' + id + '\')">📥 QR Code</button>' +
+    '<button class="btn bs bsm" onclick="openJus(\'' + id + '\')">📋 Justificar</button>' +
+    '<button class="btn bd bsm" onclick="delF(\'' + id + '\')">🗑 Excluir</button></div>' +
+    '<div class="ct">Horário (' + (ent ? ent.nome : 'sem entidade') + ')</div>' +
+    '<div class="card" style="padding:8px">' + schedHtml + '</div>';
+  openM('mfd');
+  setTimeout(function() {
+    var c = document.getElementById('qr-' + id);
+    if (c && !c.querySelector('canvas')) new QRCode(c, { text: qrData, width: 148, height: 148, colorDark:'#000', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.H });
+  }, 80);
+}
+function dlQR(id) {
+  var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
+  var c = document.getElementById('qr-' + id); if (!c) return;
+  var canvas = c.querySelector('canvas'); if (!canvas) return;
+  var a = document.createElement('a'); a.download = 'qr_' + f.matricula + '.png'; a.href = canvas.toDataURL('image/png'); a.click();
+  toast('QR baixado!', 'ok');
+}
+function delF(id) {
+  if (!confirm('Excluir funcionário?')) return;
+  showSpin('Excluindo…');
+  call('deleteFuncionario', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      DB.funcionarios = DB.funcionarios.filter(function(f){ return f.id !== id; });
+      closeM('mfd'); loadFuncs(); toast('Excluído', 'in');
+    }
+  });
+}
+function jornadaMinsArr(sched, dow) {
+  var s = sched[dow]; if (!s || s.folga || !s.entrada || !s.saida) return 0;
+  var total = t2m(s.saida) - t2m(s.entrada);
+  var lunch = (s.almocoIni && s.almocoFim) ? t2m(s.almocoFim) - t2m(s.almocoIni) : 0;
+  return Math.max(0, total - lunch);
+}
+function defaultSchedArr() {
+  return [
+    { folga:true,  entrada:'',     almocoIni:'',     almocoFim:'',     saida:''     },
+    { folga:false, entrada:'08:00',almocoIni:'12:00',almocoFim:'13:00',saida:'17:00'},
+    { folga:false, entrada:'08:00',almocoIni:'12:00',almocoFim:'13:00',saida:'17:00'},
+    { folga:false, entrada:'08:00',almocoIni:'12:00',almocoFim:'13:00',saida:'17:00'},
+    { folga:false, entrada:'08:00',almocoIni:'12:00',almocoFim:'13:00',saida:'17:00'},
+    { folga:false, entrada:'08:00',almocoIni:'12:00',almocoFim:'13:00',saida:'16:00'},
+    { folga:false, entrada:'08:00',almocoIni:'',     almocoFim:'',     saida:'12:00'},
+  ];
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ENTIDADES
+// ══════════════════════════════════════════════════════════════
+function loadEnts() {
+  var list = document.getElementById('elist');
+  if (!DB.entidades.length) { list.innerHTML = '<div class="muted xs tc" style="padding:32px">Nenhuma entidade</div>'; return; }
+  var ic = { obra:'🏗', filial:'🏢', setor:'🏬', outro:'📌' };
+  list.innerHTML = DB.entidades.map(function(e) {
+    var sched = e.schedule || defaultSchedArr();
+    var dayBadges = sched.map(function(s, i) {
+      if (s.folga) return '<span class="bdg br" style="font-size:.6rem">' + DAYS_SHORT[i] + '</span>';
+      var jm = jornadaMinsArr(sched, i);
+      return '<span class="bdg bc" style="font-size:.6rem">' + DAYS_SHORT[i] + ' ' + fmtH(jm) + '</span>';
+    }).join('');
+    var pct = e.percentuais || {};
+    return '<div class="card mb"><div class="fb mb8">' +
+      '<div><div style="font-weight:700">' + (ic[e.tipo]||'📌') + ' ' + e.nome + '</div>' +
+      '<div class="muted xs">' + e.tipo + ' · ' + (e.estado||'—') + ' · ' + DB.funcionarios.filter(function(f){ return f.entidadeId === e.id || f.entidade === e.id; }).length + ' func.</div></div>' +
+      '<div class="fc g6"><button class="btn bs bxs" onclick="openME(\'' + e.id + '\')">✏️</button><button class="btn bd bxs" onclick="delE(\'' + e.id + '\')">🗑</button></div></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">' + dayBadges + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">' +
+      (pct.semana != null ? '<span class="bdg bb">SF ' + pct.semana + '%</span>' : '') +
+      (pct.sabado != null ? '<span class="bdg by">Sáb ' + pct.sabado + '%</span>' : '') +
+      (pct.domingo != null ? '<span class="bdg bo">Dom ' + pct.domingo + '%</span>' : '') +
+      (pct.feriado != null ? '<span class="bdg br">Fer ' + pct.feriado + '%</span>' : '') +
+      '</div></div>';
+  }).join('');
+  refreshSels();
+}
+
+var editSched = [];
+function openME(id) {
+  document.getElementById('me-ttl').textContent = id ? 'Editar Entidade' : 'Nova Entidade';
+  document.getElementById('me-id').value = id || '';
+  var defPct = DB.config;
+  if (id) {
+    var e = DB.entidades.find(function(en){ return en.id === id; }); if (!e) return;
+    document.getElementById('me-nome').value = e.nome || '';
+    document.getElementById('me-tipo').value = e.tipo || 'obra';
+    document.getElementById('me-est').value  = e.estado || '';
+    var p = e.percentuais || {};
+    document.getElementById('me-ps').value  = p.semana    ?? 50;
+    document.getElementById('me-psa').value = p.sabado    ?? 50;
+    document.getElementById('me-pd').value  = p.domingo   ?? 100;
+    document.getElementById('me-pf').value  = p.feriado   ?? 100;
+    document.getElementById('me-pn').value  = p.noturno   ?? 20;
+    document.getElementById('me-lm').value  = p.limMensal ?? 80;
+    buildSchedTable(e.schedule || defaultSchedArr());
+  } else {
+    ['me-nome','me-est'].forEach(function(x){ document.getElementById(x).value=''; });
+    document.getElementById('me-tipo').value = 'obra';
+    document.getElementById('me-ps').value  = DB.config.pct_semana    || 50;
+    document.getElementById('me-psa').value = DB.config.pct_sabado    || 50;
+    document.getElementById('me-pd').value  = DB.config.pct_domingo   || 100;
+    document.getElementById('me-pf').value  = DB.config.pct_feriado   || 100;
+    document.getElementById('me-pn').value  = DB.config.pct_noturno   || 20;
+    document.getElementById('me-lm').value  = DB.config.pct_limMensal || 80;
+    buildSchedTable(defaultSchedArr());
+  }
+  openM('me');
+}
+function buildSchedTable(sched) {
+  var tbody = document.getElementById('sched-tbody');
+  editSched = sched.map(function(s){ return Object.assign({}, s); });
+  tbody.innerHTML = editSched.map(function(s, i) {
+    return '<tr data-dow="' + i + '">' +
+      '<td>' + DAYS_FULL[i] + '</td>' +
+      '<td><input type="time" data-field="entrada"    value="' + (s.folga ? '' : s.entrada||'')    + '" ' + (s.folga ? 'disabled' : '') + '></td>' +
+      '<td><input type="time" data-field="almocoIni"  value="' + (s.folga ? '' : s.almocoIni||'')  + '" ' + (s.folga ? 'disabled' : '') + '></td>' +
+      '<td><input type="time" data-field="almocoFim"  value="' + (s.folga ? '' : s.almocoFim||'')  + '" ' + (s.folga ? 'disabled' : '') + '></td>' +
+      '<td><input type="time" data-field="saida"      value="' + (s.folga ? '' : s.saida||'')      + '" ' + (s.folga ? 'disabled' : '') + '></td>' +
+      '<td><label class="folgacheck"><input type="checkbox" data-field="folga" ' + (s.folga ? 'checked' : '') + ' onchange="onFolga(this,' + i + ')"> Folga</label></td>' +
+      '</tr>';
+  }).join('');
+  tbody.querySelectorAll('input[type=time]').forEach(function(inp) {
+    inp.addEventListener('change', function(e) {
+      var dow = parseInt(e.target.closest('tr').dataset.dow);
+      editSched[dow][e.target.dataset.field] = e.target.value;
+    });
+  });
+}
+function onFolga(cb, dow) { editSched[dow].folga = cb.checked; buildSchedTable(editSched); }
+function copyDay(fromDow, target) {
+  var src = Object.assign({}, editSched[fromDow]);
+  if (target === 'all') for (var i = 0; i < 7; i++) editSched[i] = Object.assign({}, src);
+  else if (target === 'wd') for (var j = 1; j <= 5; j++) editSched[j] = Object.assign({}, src);
+  buildSchedTable(editSched);
+}
+function resetSched() { buildSchedTable(defaultSchedArr()); }
+function saveE() {
+  var nome = document.getElementById('me-nome').value.trim();
+  if (!nome) { toast('Nome obrigatório', 'er'); return; }
+  var eid = document.getElementById('me-id').value;
+  var payload = {
+    id: eid || undefined,
+    nome: nome,
+    tipo:   document.getElementById('me-tipo').value,
+    estado: document.getElementById('me-est').value.trim().toUpperCase(),
+    pct_semana:    parseFloat(document.getElementById('me-ps').value)  || 50,
+    pct_sabado:    parseFloat(document.getElementById('me-psa').value) || 50,
+    pct_domingo:   parseFloat(document.getElementById('me-pd').value)  || 100,
+    pct_feriado:   parseFloat(document.getElementById('me-pf').value)  || 100,
+    pct_noturno:   parseFloat(document.getElementById('me-pn').value)  || 20,
+    pct_limMensal: parseFloat(document.getElementById('me-lm').value)  || 80,
+    schedule: editSched
+  };
+  showSpin('Salvando entidade…');
+  call('saveEntidade', payload, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      if (!eid) payload.id = r.id;
+      payload.percentuais = {
+        semana: payload.pct_semana, sabado: payload.pct_sabado, domingo: payload.pct_domingo,
+        feriado: payload.pct_feriado, noturno: payload.pct_noturno, limMensal: payload.pct_limMensal
+      };
+      var idx = DB.entidades.findIndex(function(e){ return e.id === (eid || r.id); });
+      if (idx >= 0) DB.entidades[idx] = Object.assign(DB.entidades[idx], payload);
+      else DB.entidades.push(payload);
+      closeM('me'); loadEnts(); toast('Entidade salva!', 'ok');
+    }
+  });
+}
+function delE(id) {
+  if (!confirm('Excluir entidade?')) return;
+  showSpin('Excluindo…');
+  call('deleteEntidade', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      DB.entidades = DB.entidades.filter(function(e){ return e.id !== id; });
+      loadEnts(); toast('Excluída', 'in');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FERIADOS
+// ══════════════════════════════════════════════════════════════
+function loadFers() {
+  showSpin('Carregando feriados…');
+  call('getFeriados', {}, function(r) {
+    hideSpin();
+    if (r) DB.feriados = r;
+    var tbody = document.getElementById('ftbody');
+    if (!DB.feriados.length) { tbody.innerHTML = '<tr><td colspan="5" class="muted xs tc">Nenhum feriado</td></tr>'; return; }
+    var sorted = DB.feriados.slice().sort(function(a,b){ return a.data < b.data ? -1 : 1; });
+    tbody.innerHTML = sorted.map(function(f) {
+      var ent = DB.entidades.find(function(e){ return e.id === f.entidadeId; });
+      return '<tr>' +
+        '<td>' + fmtDate(f.data) + '</td>' +
+        '<td>' + f.nome + '</td>' +
+        '<td><span class="bdg ' + (f.tipo==='nacional'?'bb':'by') + '">' + (f.tipo==='nacional'?'Nacional':'Entidade') + '</span></td>' +
+        '<td>' + (ent ? ent.nome : '—') + '</td>' +
+        '<td><button class="btn bd bxs" onclick="delFer(\'' + f.id + '\')">🗑</button></td></tr>';
+    }).join('');
+  });
+}
+function openMFer(id) {
+  refreshSels();
+  document.getElementById('mfer-id').value = id || '';
+  document.getElementById('mfer-data').value = todayStr();
+  document.getElementById('mfer-nome').value = '';
+  document.getElementById('mfer-tipo').value = 'nacional';
+  document.getElementById('mfer-ent-grp').style.display = 'none';
+  openM('mfer');
+}
+function toggleFerEnt() {
+  var t = document.getElementById('mfer-tipo').value;
+  document.getElementById('mfer-ent-grp').style.display = t === 'entidade' ? 'block' : 'none';
+}
+function saveFer() {
+  var data = document.getElementById('mfer-data').value;
+  var nome = document.getElementById('mfer-nome').value.trim();
+  if (!data || !nome) { toast('Data e nome obrigatórios', 'er'); return; }
+  var tipo = document.getElementById('mfer-tipo').value;
+  var payload = {
+    id: document.getElementById('mfer-id').value || undefined,
+    data: data, nome: nome, tipo: tipo,
+    entidadeId: tipo === 'entidade' ? document.getElementById('mfer-ent').value : ''
+  };
+  showSpin('Salvando…');
+  call('saveFeriado', payload, function(r) {
+    hideSpin();
+    if (r && r.ok) { closeM('mfer'); loadFers(); toast('Feriado salvo!', 'ok'); }
+  });
+}
+function delFer(id) {
+  if (!confirm('Excluir feriado?')) return;
+  showSpin();
+  call('deleteFeriado', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) { loadFers(); toast('Excluído', 'in'); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  JUSTIFICATIVAS
+// ══════════════════════════════════════════════════════════════
+function openJus(funcId) {
+  var sel = document.getElementById('jus-func');
+  sel.innerHTML = DB.funcionarios.map(function(f){
+    return '<option value="' + f.id + '"' + (f.id === funcId ? ' selected' : '') + '>' + f.nome + '</option>';
+  }).join('');
+  document.getElementById('jus-ini').value = todayStr();
+  document.getElementById('jus-fim').value = todayStr();
+  document.getElementById('jus-obs').value = '';
+  closeM('mfd'); openM('mjus');
+}
+function saveJus() {
+  var fid = document.getElementById('jus-func').value;
+  var ini = document.getElementById('jus-ini').value;
+  var fim = document.getElementById('jus-fim').value;
+  if (!fid || !ini || !fim) { toast('Preencha todos os campos', 'er'); return; }
+  var payload = {
+    funcId: fid, dataIni: ini, dataFim: fim,
+    tipo: document.getElementById('jus-tp').value,
+    obs:  document.getElementById('jus-obs').value
+  };
+  showSpin('Salvando…');
+  call('saveJustificativa', payload, function(r) {
+    hideSpin();
+    if (r && r.ok) { closeM('mjus'); toast('Justificativa salva!', 'ok'); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RELATÓRIOS
+// ══════════════════════════════════════════════════════════════
+function initRelPage() {
+  var today = todayStr();
+  document.getElementById('rel-mes').value = today.substr(0, 7);
+  refreshSels();
+}
+function loadRel() {
+  var mes   = document.getElementById('rel-mes').value;
+  var funcId = document.getElementById('rel-func').value;
+  var entId  = document.getElementById('rel-ent').value;
+  showSpin('Gerando relatório…');
+  call('getRelatorio', { mes: mes, funcId: funcId, entidadeId: entId }, function(r) {
+    hideSpin();
+    if (!r) return;
+    var body = document.getElementById('rel-body');
+    var tmap = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+    if (!r.funcionarios || !r.funcionarios.length) {
+      body.innerHTML = '<div class="card muted xs tc" style="padding:24px">Nenhum dado para o período</div>';
+      return;
+    }
+    body.innerHTML = r.funcionarios.map(function(item) {
+      var f = item.funcionario;
+      var ext = item.extras || {};
+      var av = f.fotoUrl ? '<img src="' + f.fotoUrl + '" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0">' :
+               '<div style="width:42px;height:42px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:\'Syne\',sans-serif;font-weight:700;color:var(--acc);flex-shrink:0">' + (f.nome||'?')[0] + '</div>';
+      var batsHtml = '<div class="tw"><table><thead><tr><th>Data</th><th>Tipo</th><th>Hora</th><th>Local</th><th>Foto</th></tr></thead><tbody>' +
+        item.batidas.map(function(b) {
+          return '<tr><td>' + fmtDate(b.data) + '</td><td>' + (tmap[b.tipo]||b.tipo) + '</td><td>' + fmtTime(b.timestamp) + '</td>' +
+            '<td class="xs muted">' + (b.localizacao||'—') + '</td>' +
+            '<td>' + (b.fotoUrl ? '<img src="' + b.fotoUrl + '" onclick="showPhoto(\'' + b.fotoUrl + '\')" style="width:32px;height:32px;border-radius:4px;object-fit:cover;cursor:pointer">' : '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+      return '<div class="card mb">' +
+        '<div class="fc g12 mb12">' + av +
+        '<div><div style="font-weight:700">' + f.nome + '</div>' +
+        '<div class="muted xs">' + (f.cargo||'—') + ' · Mat: ' + (f.matricula||'—') + '</div>' +
+        '<div class="fc g6 mt8">' +
+        '<span class="bdg ' + ((ext.totalMins||0) >= 0 ? 'bg' : 'br') + '">' + fmtH(ext.totalMins||0) + ' extras</span>' +
+        '</div></div></div>' + batsHtml + '</div>';
+    }).join('');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BANCO DE HORAS
+// ══════════════════════════════════════════════════════════════
+function initBancoPage() {
+  document.getElementById('banco-mes').value = todayStr().substr(0, 7);
+  loadBancoPage();
+}
+function loadBancoPage() {
+  var mes = document.getElementById('banco-mes').value;
+  showSpin('Calculando banco de horas…');
+  call('getBanco', { mes: mes }, function(r) {
+    hideSpin();
+    if (!r || !r.length) { document.getElementById('banco-body').innerHTML = '<div class="card muted xs tc" style="padding:24px">Nenhum dado</div>'; return; }
+    document.getElementById('banco-body').innerHTML = '<div class="card"><div class="tw"><table><thead><tr><th>Funcionário</th><th>Cargo</th><th>Extras</th><th>Saldo</th></tr></thead><tbody>' +
+      r.map(function(row) {
+        var color = row.extrasMins >= 0 ? 'var(--grn)' : 'var(--red)';
+        return '<tr><td>' + row.nome + '</td><td class="muted xs">' + (row.cargo||'—') + '</td>' +
+          '<td style="color:' + color + ';font-weight:600">' + fmtH(row.extrasMins) + '</td>' +
+          '<td style="color:' + color + '">' + fmtH(row.saldoBancoMins) + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PÁGINA DE BATIDAS
+// ══════════════════════════════════════════════════════════════
+function initBatidasPage() {
+  document.getElementById('bat-data').value = todayStr();
+  refreshSels();
+  loadBatidasPage();
+}
+function loadBatidasPage() {
+  var data   = document.getElementById('bat-data').value;
+  var funcId = document.getElementById('bat-func').value;
+  showSpin('Buscando batidas…');
+  call('getBatidas', { data: data, funcId: funcId || undefined }, function(r) {
+    hideSpin();
+    var tbody = document.getElementById('bat-tbody');
+    var tmap  = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' };
+    if (!r || !r.length) { tbody.innerHTML = '<tr><td colspan="7" class="muted xs tc">Nenhuma batida</td></tr>'; return; }
+    var sorted = r.slice().sort(function(a,b){ return a.timestamp < b.timestamp ? -1 : 1; });
+    tbody.innerHTML = sorted.map(function(b) {
+      var f = DB.funcionarios.find(function(fn){ return fn.id === b.funcId; });
+      return '<tr>' +
+        '<td class="xs">' + fmtDate(b.data) + '</td>' +
+        '<td>' + (f ? f.nome : b.funcId) + '</td>' +
+        '<td>' + (tmap[b.tipo]||b.tipo) + '</td>' +
+        '<td>' + fmtTime(b.timestamp) + '</td>' +
+        '<td class="xs muted">' + (b.localizacao||'—') + '</td>' +
+        '<td>' + (b.fotoUrl ? '<img src="' + b.fotoUrl + '" onclick="showPhoto(\'' + b.fotoUrl + '\')" style="width:32px;height:32px;border-radius:4px;object-fit:cover;cursor:pointer">' : '—') + '</td>' +
+        '<td><button class="btn bd bxs" onclick="delBat(\'' + b.id + '\')">🗑</button></td></tr>';
+    }).join('');
+  });
+}
+function delBat(id) {
+  if (!confirm('Excluir esta batida?')) return;
+  showSpin();
+  call('deleteBatida', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) { loadBatidasPage(); toast('Batida excluída', 'in'); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONFIGURAÇÕES
+// ══════════════════════════════════════════════════════════════
+function saveGasUrl() {
+  var url = document.getElementById('cfg-gas-url').value.trim();
+  if (!url) { toast('Cole a URL do Apps Script', 'er'); return; }
+  GAS_URL = url;
+  localStorage.setItem('pqr_gasurl', url);
+  document.getElementById('cfg-banner').style.display = 'none';
+  toast('URL salva! Conectando…', 'ok');
+  showSpin('Sincronizando com a planilha…');
+  loadAllData(function() { hideSpin(); loadDash(); updatePill(); toast('✅ Conectado!', 'ok'); });
+}
+
+function loadCfg() {
+  document.getElementById('cfg-gas-url').value = GAS_URL || '';
+  if (!GAS_URL) document.getElementById('cfg-banner').style.display = 'block';
+  document.getElementById('cfg-emp').value  = DB.config.empresa || '';
+  document.getElementById('cfg-cnpj').value = DB.config.cnpj   || '';
+  refreshSels();
+  if (DB.config.defaultEntity) document.getElementById('cfg-dent').value = DB.config.defaultEntity;
+  document.getElementById('g-ps').value  = DB.config.pct_semana    || 50;
+  document.getElementById('g-psa').value = DB.config.pct_sabado    || 50;
+  document.getElementById('g-pd').value  = DB.config.pct_domingo   || 100;
+  document.getElementById('g-pf').value  = DB.config.pct_feriado   || 100;
+  document.getElementById('g-pn').value  = DB.config.pct_noturno   || 20;
+  document.getElementById('g-lm').value  = DB.config.pct_limMensal || 80;
+}
+function saveCfg() {
+  var payload = {
+    empresa:       document.getElementById('cfg-emp').value,
+    cnpj:          document.getElementById('cfg-cnpj').value,
+    defaultEntity: document.getElementById('cfg-dent').value
+  };
+  showSpin('Salvando…');
+  call('saveConfig', payload, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      Object.assign(DB.config, payload);
+      updatePill(); toast('Configurações salvas!', 'ok');
+    }
+  });
+}
+function savePct() {
+  var payload = {
+    pct_semana:    parseFloat(document.getElementById('g-ps').value)  || 50,
+    pct_sabado:    parseFloat(document.getElementById('g-psa').value) || 50,
+    pct_domingo:   parseFloat(document.getElementById('g-pd').value)  || 100,
+    pct_feriado:   parseFloat(document.getElementById('g-pf').value)  || 100,
+    pct_noturno:   parseFloat(document.getElementById('g-pn').value)  || 20,
+    pct_limMensal: parseFloat(document.getElementById('g-lm').value)  || 80
+  };
+  showSpin('Salvando…');
+  call('saveConfig', payload, function(r) {
+    hideSpin();
+    if (r && r.ok) { Object.assign(DB.config, payload); toast('Percentuais salvos!', 'ok'); }
+  });
+}
+</script>
 </body>
 </html>
