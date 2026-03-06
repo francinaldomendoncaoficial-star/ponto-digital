@@ -1713,9 +1713,14 @@ function saveF() {
         data:     new Date().toISOString().substr(0,10),
         tipo:     'perfil'
       }, function() {});
-      // Exibe base64 localmente enquanto o Drive processa
+      // Exibe base64 localmente por ora; recarrega do servidor após 3s para pegar URL real do Drive
       var i2 = DB.funcionarios.findIndex(function(f){ return f.id === savedId; });
       if (i2 >= 0) DB.funcionarios[i2].fotoUrl = fotoB64;
+      setTimeout(function() {
+        callGet('getFuncionarios', {}, function(r) {
+          if (r && !r.error) { DB.funcionarios = r; loadFuncs(); }
+        });
+      }, 3000);
     }
 
     hideSpin();
@@ -1783,6 +1788,13 @@ function printCracha(id) {
   var canvas = div ? div.querySelector('canvas') : null;
   var img    = div ? div.querySelector('img')    : null;
   var qrImg  = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+  // Usa fotoUrl do DB — pode ser URL do Drive ou base64 local (ambos funcionam no crachá)
+  var fotoSrc = f.fotoUrl || '';
+  // Se não tem foto no DB, tenta pegar o preview que está na tela
+  if (!fotoSrc) {
+    var prevImg = document.querySelector('#mf-av img') || document.querySelector('.eav');
+    if (prevImg && prevImg.src && prevImg.src.length > 10) fotoSrc = prevImg.src;
+  }
   var w = window.open('', '_blank', 'width=420,height=580');
   if (!w) { toast('Popup bloqueado — permita popups para este site', 'er'); return; }
   w.document.write(
@@ -1802,7 +1814,7 @@ function printCracha(id) {
     '@media print{body{padding:0}}' +
     '</style></head><body><div class="cracha">' +
     '<div class="hdr">🏗 ' + ((ent && ent.nome) || 'PontoQR') + '</div>' +
-    '<div class="av">' + (f.fotoUrl ? '<img src="' + f.fotoUrl + '">' : f.nome[0]) + '</div>' +
+    '<div class="av">' + (fotoSrc ? '<img src="' + fotoSrc + '">' : f.nome[0]) + '</div>' +
     '<div class="nome">' + f.nome + '</div>' +
     '<div class="cargo">' + (f.cargo || '—') + '</div>' +
     (f.cpf ? '<div class="cargo">CPF: ' + f.cpf + '</div>' : '') +
