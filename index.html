@@ -1037,7 +1037,7 @@ function loadDash() {
 // ══════════════════════════════════════════════════════════════
 //  CÂMERA / SCANNER
 // ══════════════════════════════════════════════════════════════
-var stream = null, scanInt = null, facing = 'environment', wallMode = false, wallCD = false;
+var stream = null, scanInt = null, facing = 'user', wallMode = false, wallCD = false;
 
 async function initCam() {
   if (stream) return;
@@ -1046,8 +1046,7 @@ async function initCam() {
   catch(e) {
     if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError' || e.name === 'SecurityError') {
       document.getElementById('cambk').style.display = 'block';
-      document.getElementById('sstat').textContent = '🔒 Câmera bloqueada';
-      atualizarLinkCam();
+      document.getElementById('sstat').textContent = '🔒 Permissão negada';
     } else {
       document.getElementById('sstat').textContent = '⚠ ' + e.message;
     }
@@ -1077,34 +1076,6 @@ function stopCam() {
 }
 function switchCam() { facing = facing === 'environment' ? 'user' : 'environment'; startCam(facing); }
 function retryCam()  { document.getElementById('cambk').style.display = 'none'; stream = null; initCam(); }
-
-function atualizarLinkCam() {
-  if (!WEBAPP_URL) return;
-  var el = document.getElementById('cambk-urltext');
-  var al = document.getElementById('cambk-alink');
-  if (el) el.textContent = WEBAPP_URL;
-  if (al) al.href = WEBAPP_URL;
-}
-
-function copiarUrlCam() {
-  if (!WEBAPP_URL) { toast('URL ainda não carregada', 'er'); return; }
-  navigator.clipboard.writeText(WEBAPP_URL)
-    .then(function(){ toast('URL copiada!', 'ok'); })
-    .catch(function(){
-      // fallback para browsers sem clipboard API
-      var ta = document.createElement('textarea');
-      ta.value = WEBAPP_URL; document.body.appendChild(ta);
-      ta.select(); document.execCommand('copy');
-      document.body.removeChild(ta);
-      toast('URL copiada!', 'ok');
-    });
-}
-
-function openInNewWindow() {
-  if (!WEBAPP_URL) { toast('URL ainda carregando, tente em 2s', 'er'); return; }
-  var win = window.open(WEBAPP_URL, '_blank');
-  if (!win) toast('Popup bloqueado — copie a URL e abra manualmente', 'er');
-}
 function toggleWM() {
   wallMode = document.getElementById('wmtog').checked;
   toast(wallMode ? '⚙ Modo Parede ativo' : 'Modo Parede desativado');
@@ -1166,47 +1137,38 @@ function doReg(func, photo, obsExtra, cb) {
   var tipo = nextPunch(func.id, ds);
   var tl = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída p/ Almoço', almoco_retorno:'Retorno Almoço' };
 
-  var doSave = function(loc, fotoUrl) {
+  var doSave = function(loc) {
     var locFinal = obsExtra ? (loc ? loc + ' · ' + obsExtra : obsExtra) : loc;
     var bat = {
-      funcId: func.id,
-      entidadeId: func.entidadeId || func.entidade || DB.config.defaultEntity || '',
-      data: ds,
-      timestamp: now.toISOString(),
-      tipo: tipo,
+      funcId:      func.id,
+      funcNome:    func.nome,
+      entidadeId:  func.entidadeId || func.entidade || DB.config.defaultEntity || '',
+      data:        ds,
+      timestamp:   now.toISOString(),
+      tipo:        tipo,
       localizacao: locFinal || '',
-      fotoUrl: fotoUrl || '',
-      device: navigator.userAgent.substr(0, 80)
+      device:      navigator.userAgent.substr(0, 80),
+      fotoBase64:  photo || ''   // foto vai junto — o backend salva no Drive
     };
-    DB.batidas.push(Object.assign({ id: '_tmp_' + uid() }, bat));
-    call('registrarBatida', bat, function(r) {
-      if (r && r.ok) {
-        toast('✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo], 'ok');
-        var el = document.getElementById('shit');
-        if (el) { el.textContent = '✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo]; setTimeout(function(){ el.textContent = 'Aponte para o QR Code do funcionário'; }, 3000); }
-      }
-      if (cb) cb(r);
+    // Salva localmente para feedback imediato
+    DB.batidas.push(Object.assign({ id: '_tmp_' + uid(), fotoUrl: '' }, bat));
+    // Envia para o servidor via POST no-cors
+    callPost('registrarBatida', bat, function() {
+      toast('✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo], 'ok');
+      var el = document.getElementById('shit');
+      if (el) { el.textContent = '✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo]; setTimeout(function(){ el.textContent = 'Aponte para o QR Code do funcionário'; }, 3000); }
+      if (cb) cb();
     });
-  };
-
-  var saveWithLoc = function(loc) {
-    if (photo) {
-      call('uploadFoto', { base64: photo, funcId: func.id, funcNome: func.nome, data: ds, tipo: tipo }, function(r) {
-        doSave(loc, r && r.url ? r.url : '');
-      });
-    } else {
-      doSave(loc, '');
-    }
   };
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      function(p){ saveWithLoc('📍 ' + p.coords.latitude.toFixed(5) + ', ' + p.coords.longitude.toFixed(5)); },
-      function()  { saveWithLoc(null); },
+      function(p){ doSave('📍 ' + p.coords.latitude.toFixed(5) + ', ' + p.coords.longitude.toFixed(5)); },
+      function()  { doSave(null); },
       { timeout: 3000 }
     );
   } else {
-    saveWithLoc(null);
+    doSave(null);
   }
 }
 document.addEventListener('visibilitychange', function() {
