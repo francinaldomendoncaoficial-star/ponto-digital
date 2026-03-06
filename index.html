@@ -8,7 +8,7 @@
 <title>PontoQR</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════
    DESIGN TOKENS
@@ -1199,10 +1199,12 @@ function startCountdown(func) {
       // Tira foto do frame atual
       var v   = document.getElementById('scvid');
       var cv2 = document.createElement('canvas');
-      cv2.width  = v.videoWidth;
-      cv2.height = v.videoHeight;
-      cv2.getContext('2d').drawImage(v, 0, 0);
-      var photo = cv2.toDataURL('image/jpeg', 0.7);
+      // Redimensiona para max 400px para manter payload pequeno (~15-20KB)
+      var maxW = 400, scale = Math.min(1, maxW / v.videoWidth);
+      cv2.width  = Math.round(v.videoWidth  * scale);
+      cv2.height = Math.round(v.videoHeight * scale);
+      cv2.getContext('2d').drawImage(v, 0, 0, cv2.width, cv2.height);
+      var photo = cv2.toDataURL('image/jpeg', 0.45);
 
       // Flash
       var fl = document.getElementById('flash');
@@ -1258,6 +1260,7 @@ function doReg(func, photo, obsExtra, cb) {
 
   var doSave = function(loc) {
     var locFinal = obsExtra ? (loc ? loc + ' · ' + obsExtra : obsExtra) : loc;
+    // Batida SEM foto — payload pequeno, confiável
     var bat = {
       funcId:     func.id,
       funcNome:   func.nome,
@@ -1266,15 +1269,23 @@ function doReg(func, photo, obsExtra, cb) {
       timestamp:  now.toISOString(),
       tipo:       tipo,
       localizacao:locFinal || '',
-      device:     navigator.userAgent.substr(0, 80),
-      fotoBase64: photo || ''
+      device:     navigator.userAgent.substr(0, 80)
     };
-    // Salva localmente para feedback imediato
     DB.batidas.push(Object.assign({ id: '_tmp_' + uid(), fotoUrl: '' }, bat));
-    // Envia para o servidor — só aqui ocorre a requisição
+    // 1) Registra batida (payload leve — não inclui foto)
     callPost('registrarBatida', bat, function(r) {
       if (cb) cb(r ? true : false);
     });
+    // 2) Envia foto separada, em paralelo (se houver) — falha silenciosa não afeta o ponto
+    if (photo) {
+      callPost('uploadFoto', {
+        base64:   photo,
+        funcId:   func.id,
+        funcNome: func.nome,
+        data:     ds,
+        tipo:     tipo
+      }, function() {});
+    }
   };
 
   if (navigator.geolocation) {
@@ -1667,7 +1678,8 @@ function saveF() {
     });
   };
 
-  // Se tem foto nova em base64, envia pro Drive primeiro
+  // Se tem foto nova em base64, envia pro Drive e salva localmente
+  // NUNCA envia base64 para saveFuncionario (estouraria a célula da planilha)
   if (fotoB64) {
     showSpin('Enviando foto…');
     callPost('uploadFoto', {
@@ -1677,10 +1689,13 @@ function saveF() {
       data:     new Date().toISOString().substr(0,10),
       tipo:     'perfil'
     }, function() {
-      // no-cors: não conseguimos ler a URL de retorno
-      // Salva a base64 localmente para exibição e deixa o Drive processar
       hideSpin();
-      doSave(fotoB64); // usa base64 como fotoUrl local (funciona para exibição)
+      // Salva o funcionário com fotoUrl vazia — foto está no Drive
+      // mas exibimos a base64 localmente para feedback imediato
+      doSave('');
+      // Atualiza preview local com base64 (só na memória, não vai pra planilha)
+      var idx = DB.funcionarios.findIndex(function(f){ return f.matricula === mat; });
+      if (idx >= 0) DB.funcionarios[idx].fotoUrl = fotoB64;
     });
   } else {
     doSave(fotoUrl);
@@ -1701,7 +1716,7 @@ function openFD(id) {
     (f.fotoUrl ? '<img src="' + f.fotoUrl + '" style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid var(--acc);flex-shrink:0">' :
      '<div style="width:58px;height:58px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:\'Syne\',sans-serif;font-weight:700;font-size:1.4rem;color:var(--acc);flex-shrink:0">' + f.nome[0] + '</div>') +
     '<div><div style="font-weight:700">' + f.nome + '</div><div class="muted xs">' + (f.cargo||'—') + ' · Mat: ' + (f.matricula||'—') + '</div><div class="muted xs">' + (ent ? ent.nome : 'Sem entidade') + ' · CPF: ' + (f.cpf||'—') + '</div></div></div>' +
-    '<div class="tc mb12"><canvas id="qr-canvas-' + id + '" style="border-radius:8px;background:#fff;padding:10px;display:inline-block"></canvas></div>' +
+    '<div class="tc mb12"><div id="qr-div-' + id + '" style="display:inline-block;background:#fff;padding:10px;border-radius:8px"></div></div>' +
     '<div class="fc g6 fw" style="margin-bottom:14px">' +
     '<button class="btn bs bsm" onclick="dlQR(\'' + id + '\')">📥 Baixar QR</button>' +
     '<button class="btn bp bsm" onclick="printCracha(\'' + id + '\')">🖨 Imprimir Crachá</button>' +
@@ -1710,29 +1725,32 @@ function openFD(id) {
     '<div class="ct">Horário (' + (ent ? ent.nome : 'sem entidade') + ')</div>' +
     '<div class="card" style="padding:8px">' + schedHtml + '</div>';
   openM('mfd');
-  // Gera QR usando a API canvas direta (qrcode@1.5.3)
+  // Gera QR usando qrcodejs
   setTimeout(function() {
-    var canvas = document.getElementById('qr-canvas-' + id);
-    if (!canvas) return;
-    QRCode.toCanvas(canvas, qrData, {
-      width: 180, margin: 1,
-      color: { dark: '#000000', light: '#ffffff' }
-    }, function(err) {
-      if (err) {
-        // fallback: exibe o ID como texto
-        canvas.getContext('2d').fillText('ID: ' + f.id, 10, 20);
-        console.error('QR error:', err);
-      }
-    });
-  }, 80);
+    var div = document.getElementById('qr-div-' + id);
+    if (!div) return;
+    div.innerHTML = '';
+    try {
+      new QRCode(div, {
+        text: qrData, width: 180, height: 180,
+        colorDark: '#000000', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch(e) { div.textContent = 'QR indisponível'; }
+  }, 120);
 }
 
 function dlQR(id) {
   var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
-  var canvas = document.getElementById('qr-canvas-' + id); if (!canvas) return;
+  var div = document.getElementById('qr-div-' + id); if (!div) return;
+  // qrcodejs gera <canvas> (desktop) ou <img> (mobile)
+  var canvas = div.querySelector('canvas');
+  var img    = div.querySelector('img');
   var a = document.createElement('a');
   a.download = 'qr_' + (f.matricula || f.id) + '.png';
-  a.href = canvas.toDataURL('image/png');
+  if (canvas) { a.href = canvas.toDataURL('image/png'); }
+  else if (img) { a.href = img.src; }
+  else { toast('QR ainda não gerado. Abra a ficha primeiro.', 'er'); return; }
   a.click();
   toast('QR baixado!', 'ok');
 }
@@ -1740,38 +1758,37 @@ function dlQR(id) {
 function printCracha(id) {
   var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
   var ent = DB.entidades.find(function(e){ return e.id === (f.entidadeId || f.entidade); });
-  var canvas = document.getElementById('qr-canvas-' + id);
-  var qrImg = canvas ? canvas.toDataURL('image/png') : '';
-  var w = window.open('', '_blank', 'width=400,height=560');
+  var div = document.getElementById('qr-div-' + id);
+  var canvas = div ? div.querySelector('canvas') : null;
+  var img    = div ? div.querySelector('img')    : null;
+  var qrImg  = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+  var w = window.open('', '_blank', 'width=420,height=580');
+  if (!w) { toast('Popup bloqueado — permita popups para este site', 'er'); return; }
   w.document.write(
     '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Crachá — ' + f.nome + '</title>' +
     '<style>' +
-    'body{margin:0;padding:20px;font-family:Arial,sans-serif;background:#fff}' +
-    '.cracha{width:320px;margin:0 auto;border:2px solid #000;border-radius:12px;overflow:hidden;text-align:center;page-break-inside:avoid}' +
-    '.header{background:#090d18;color:#00e5c3;padding:14px 10px 10px;font-size:1.1rem;font-weight:700;letter-spacing:1px}' +
-    '.foto{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #00e5c3;margin:14px auto 8px}' +
-    '.av{width:80px;height:80px;border-radius:50%;background:#eee;margin:14px auto 8px;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#090d18}' +
-    '.nome{font-size:1.1rem;font-weight:700;margin:4px 10px}' +
+    'body{margin:0;padding:20px;font-family:Arial,sans-serif;background:#fff;display:flex;justify-content:center}' +
+    '.cracha{width:300px;border:2px solid #000;border-radius:12px;overflow:hidden;text-align:center}' +
+    '.hdr{background:#090d18;color:#00e5c3;padding:14px 10px 10px;font-size:1rem;font-weight:700;letter-spacing:1px}' +
+    '.av{width:80px;height:80px;border-radius:50%;margin:14px auto 8px;overflow:hidden;border:3px solid #00e5c3;display:flex;align-items:center;justify-content:center;background:#eee;font-size:2rem;font-weight:700;color:#090d18}' +
+    '.av img{width:100%;height:100%;object-fit:cover}' +
+    '.nome{font-size:1rem;font-weight:700;margin:4px 10px}' +
     '.cargo{font-size:.8rem;color:#555;margin:2px 10px 4px}' +
-    '.entidade{font-size:.75rem;color:#777;margin-bottom:8px}' +
-    '.mat{font-size:.75rem;background:#f0f0f0;display:inline-block;padding:3px 10px;border-radius:20px;margin-bottom:10px;color:#333}' +
+    '.mat{font-size:.75rem;background:#f0f0f0;display:inline-block;padding:3px 12px;border-radius:20px;margin:6px 0;color:#333}' +
     '.qr{padding:10px;background:#fff}' +
-    '.qr img{width:140px;height:140px}' +
-    '.footer{background:#090d18;color:#555;font-size:.6rem;padding:6px}' +
+    '.qr img{width:150px;height:150px}' +
+    '.ftr{background:#090d18;color:#555;font-size:.6rem;padding:8px}' +
     '@media print{body{padding:0}}' +
-    '</style></head><body>' +
-    '<div class="cracha">' +
-    '<div class="header">🏗 ' + ((ent && ent.nome) || 'PontoQR') + '</div>' +
-    (f.fotoUrl ? '<img class="foto" src="' + f.fotoUrl + '">' : '<div class="av">' + f.nome[0] + '</div>') +
+    '</style></head><body><div class="cracha">' +
+    '<div class="hdr">🏗 ' + ((ent && ent.nome) || 'PontoQR') + '</div>' +
+    '<div class="av">' + (f.fotoUrl ? '<img src="' + f.fotoUrl + '">' : f.nome[0]) + '</div>' +
     '<div class="nome">' + f.nome + '</div>' +
     '<div class="cargo">' + (f.cargo || '—') + '</div>' +
+    (f.cpf ? '<div class="cargo">CPF: ' + f.cpf + '</div>' : '') +
     '<div class="mat">Mat: ' + (f.matricula || f.id) + '</div>' +
-    (f.cpf ? '<div class="entidade">CPF: ' + f.cpf + '</div>' : '') +
-    '<div class="qr">' + (qrImg ? '<img src="' + qrImg + '">' : '') + '</div>' +
-    '<div class="footer">PontoQR · Escaneie para registrar ponto</div>' +
-    '</div>' +
-    '<script>window.onload=function(){window.print();}<\/script>' +
-    '</body></html>'
+    '<div class="qr">' + (qrImg ? '<img src="' + qrImg + '">' : '<p>QR indisponível</p>') + '</div>' +
+    '<div class="ftr">PontoQR · Escaneie para registrar ponto</div>' +
+    '</div><script>window.onload=function(){window.print();}<\/script></body></html>'
   );
   w.document.close();
 }
