@@ -861,7 +861,7 @@ function callGet(action, params, cb) {
     })
     .then(function(data) {
       if (data && data.error) {
-        toast('Erro servidor: ' + data.error, 'er');
+        toast('❌ Erro: ' + data.error, 'er');
         console.error('callGet erro servidor:', action, data.error);
       }
       if (cb) cb(data);
@@ -874,30 +874,54 @@ function callGet(action, params, cb) {
     });
 }
 
-// callPost: envia dados via POST no-cors (igual ao exemplo do cliente)
+// callPost: usa GET com payload em JSON (evita problemas de CORS com POST no-cors)
+// O GAS aceita dados via ?payload=... na URL — CORS funciona normalmente
 function callPost(action, payload, cb) {
   if (!GAS_URL) {
     toast('⚠️ URL do Apps Script não configurada — vá em Configurações', 'er');
     if (cb) cb(null);
     return;
   }
-  fetch(GAS_URL, {
-    method:  'POST',
-    mode:    'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
-    body:    JSON.stringify({ action: action, payload: payload || {} })
-  })
-  .then(function() {
-    if (cb) cb({ ok: true });
-  })
-  .catch(function(err) {
-    toast('❌ Erro ao enviar para planilha: ' + err.message, 'er');
-    console.error('callPost erro:', action, err);
-    if (cb) cb(null);
-  });
+  var p = payload || {};
+  // Fotos em base64 são grandes demais para URL — usa POST real no-cors
+  var hasBase64 = p.base64 || p.fotoBase64 || (p.fotoUrl && p.fotoUrl.length > 500);
+  if (hasBase64) {
+    fetch(GAS_URL, {
+      method:  'POST',
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body:    JSON.stringify({ action: action, payload: p })
+    })
+    .then(function() { if (cb) cb({ ok: true }); })
+    .catch(function(err) {
+      toast('❌ Erro ao enviar foto: ' + err.message, 'er');
+      if (cb) cb(null);
+    });
+    return;
+  }
+  // Para dados normais: envia via GET com parâmetros — CORS funciona, resposta legível
+  var url = GAS_URL + '?action=' + encodeURIComponent(action)
+                    + '&payload=' + encodeURIComponent(JSON.stringify(p));
+  fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      if (data && data.error) {
+        toast('❌ Erro: ' + data.error, 'er');
+        console.error('callPost via GET erro:', action, data.error);
+      }
+      if (cb) cb(data || { ok: true });
+    })
+    .catch(function(err) {
+      toast('❌ Erro ao salvar (' + action + '): ' + err.message, 'er');
+      console.error('callPost erro:', action, err);
+      if (cb) cb(null);
+    });
 }
 
-// call: alias inteligente — GET para leituras, POST para escritas
+// call: alias — distingue leituras de escritas
 function call(action, payload, cb) {
   var reads = ['getConfig','getEntidades','getFuncionarios','getFeriados',
                'getJustificativas','getBatidas','getDashboard','getRelatorio','getBanco'];
@@ -1666,11 +1690,11 @@ function saveF() {
       fotoUrl:    urlFinal || ''
     };
     showSpin('Salvando…');
-    call('saveFuncionario', data, function(r) {
+    callPost('saveFuncionario', data, function(r) {
       hideSpin();
       if (r && r.ok) {
-        if (!eid) data.id = r.id;
-        var idx = DB.funcionarios.findIndex(function(f){ return f.id === (eid || r.id); });
+        if (!eid && r.id) data.id = r.id;
+        var idx = DB.funcionarios.findIndex(function(f){ return f.id === data.id; });
         if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
         else DB.funcionarios.push(data);
         closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
