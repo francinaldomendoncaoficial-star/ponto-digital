@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ponto Digital - Natal/RN</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1e272e; color: white; margin: 0; padding: 20px; }
+    .container { max-width: 500px; margin: auto; }
+    #canvas { width: 100%; border: 5px solid #485460; border-radius: 20px; background: #000; display: none; }
+    #status { font-size: 1.2em; margin-top: 20px; padding: 15px; border-radius: 12px; background: #485460; min-height: 50px; }
+    #timer { font-size: 8em; color: #ff3f34; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; display: none; z-index: 10; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+    .camera-box { position: relative; display: inline-block; width: 100%; }
+    #btnAtivar { padding: 20px 40px; font-size: 1.2em; cursor: pointer; background: #05c46b; color: white; border: none; border-radius: 10px; font-weight: bold; width: 100%; }
+    .sucesso { background: #05c46b !important; }
+    .erro { background: #ff5e57 !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>SISTEMA DE PONTO DIGITAL</h2>
+    <div class="camera-box">
+      <button id="btnAtivar">LIGAR CÂMERA 🎥</button>
+      <canvas id="canvas"></canvas>
+      <div id="timer">5</div>
+    </div>
+    <div id="status">Aguardando ativação...</div>
+  </div>
+
+  <script>
+    const video = document.createElement("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const statusDiv = document.getElementById("status");
+    const timerDiv = document.getElementById("timer");
+    const btnAtivar = document.getElementById("btnAtivar");
+    let scanning = true;
+
+    // 🔗 COLE AQUI A URL DO SEU APP SCRIPT (o link que termina em /exec)
+    const urlGoogle = "SUA_URL_DO_APPS_SCRIPT_AQUI"; 
+
+    // Inicia a câmera após o clique (necessário para permissão do navegador)
+    btnAtivar.onclick = function() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => {
+          video.srcObject = stream;
+          video.setAttribute("playsinline", true);
+          video.play();
+          btnAtivar.style.display = "none";
+          canvas.style.display = "block";
+          statusDiv.innerText = "🔍 Buscando QR Code...";
+          requestAnimationFrame(tick);
+        })
+        .catch(err => {
+          statusDiv.innerText = "❌ Erro: Permita o acesso à câmera nas configurações.";
+          statusDiv.classList.add("erro");
+        });
+    };
+
+    function tick() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA && scanning) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code && code.data) {
+          iniciarContagem(code.data);
+          return;
+        }
+      }
+      // Processa 4x por segundo para não sobrecarregar o tablet
+      setTimeout(() => { if (scanning) requestAnimationFrame(tick); }, 250);
+    }
+
+    function iniciarContagem(qrData) {
+      scanning = false;
+      let count = 5;
+      timerDiv.style.display = "block";
+      timerDiv.innerText = count;
+      statusDiv.innerText = "✅ Identificado! Prepare o sorriso... 😁";
+
+      const countdown = setInterval(() => {
+        count--;
+        timerDiv.innerText = count;
+        if (count <= 0) {
+          clearInterval(countdown);
+          timerDiv.style.display = "none";
+          registrarPonto(qrData);
+        }
+      }, 1000);
+    }
+
+    function registrarPonto(qrData) {
+      // Tira a foto do frame atual
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUri = canvas.toDataURL('image/png');
+      
+      statusDiv.innerText = "📤 Enviando dados...";
+
+      // Envia para o Google Apps Script via POST
+      fetch(urlGoogle, {
+        method: 'POST',
+        mode: 'no-cors', 
+        body: JSON.stringify({ qr: qrData, image: dataUri })
+      }).then(() => {
+        statusDiv.innerText = "🎉 Ponto registrado com sucesso!";
+        statusDiv.classList.add("sucesso");
+        setTimeout(resetarInterface, 4000);
+      }).catch(err => {
+        statusDiv.innerText = "❌ Erro ao enviar para a planilha.";
+        statusDiv.classList.add("erro");
+        setTimeout(resetarInterface, 4000);
+      });
+    }
+
+    function resetarInterface() {
+      scanning = true;
+      statusDiv.innerText = "🔍 Buscando QR Code...";
+      statusDiv.classList.remove("sucesso", "erro");
+      requestAnimationFrame(tick);
+    }
+  </script>
+</body>
+</html>
