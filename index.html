@@ -182,35 +182,46 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mcl{cursor:pointer;background:var(--bg3);border:none;color:var(--txt2);width:30px;height:30px;border-radius:8px;font-size:1rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--brd)}
 
 /* ── SCANNER TABS ── */
-.scan-tab{
-  flex:1;padding:11px 8px;text-align:center;font-size:.8rem;font-weight:600;
-  color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:.15s
-}
+.scan-tab{flex:1;padding:10px 4px;text-align:center;font-size:.75rem;font-weight:600;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scan-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
-
 /* ── SCANNER ── */
 #pg-scanner{background:#000;padding:0}
-#svw{position:relative;flex:1;overflow:hidden}
-#scvid{width:100%;height:100%;object-fit:cover}
-#sov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-#sfr{width:224px;height:224px;position:relative;box-shadow:0 0 0 9999px rgba(0,0,0,.52)}
+#svw{position:relative;flex:1;overflow:hidden;min-height:0}
+#scvid{width:100%;height:100%;object-fit:cover;display:block}
+#sov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+#sfr{width:min(240px,60vw);height:min(240px,60vw);position:relative;box-shadow:0 0 0 9999px rgba(0,0,0,.55)}
 #sfr::before,#sfr::after,.sc-c{content:'';position:absolute;width:28px;height:28px;border-color:var(--acc);border-style:solid}
 #sfr::before{top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:8px 0 0 0}
 #sfr::after{bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 8px 0}
 .sc-tr{position:absolute;top:-2px;right:-2px;border-width:3px 3px 0 0;border-radius:0 8px 0 0}
 .sc-bl{position:absolute;bottom:-2px;left:-2px;border-width:0 0 3px 3px;border-radius:0 0 0 8px}
-#sln{position:absolute;width:188px;height:2px;background:linear-gradient(90deg,transparent,var(--acc),transparent);animation:sl 2s ease-in-out infinite;left:50%;transform:translateX(-50%);top:20px}
-@keyframes sl{0%,100%{top:12px;opacity:0}10%,90%{opacity:1}50%{top:204px}}
-#shit{margin-top:14px;background:rgba(0,0,0,.75);padding:7px 18px;border-radius:20px;color:#fff;font-size:.78rem;text-align:center;border:1px solid rgba(255,255,255,.1)}
-#sctrl{padding:12px 16px;background:rgba(0,0,0,.88);display:flex;align-items:center;gap:10px;flex-shrink:0}
-#sstat{color:var(--txt2);font-size:.76rem;flex:1;text-align:center}
-#cdov{position:absolute;inset:0;background:rgba(0,0,0,.72);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+#sln{position:absolute;width:80%;height:2px;background:linear-gradient(90deg,transparent,var(--acc),transparent);animation:sl 2s ease-in-out infinite;left:50%;transform:translateX(-50%)}
+@keyframes sl{0%,100%{top:8%;opacity:0}10%,90%{opacity:1}50%{top:88%}}
+#shit{margin-top:16px;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);padding:8px 20px;border-radius:24px;color:#fff;font-size:.8rem;text-align:center;border:1px solid rgba(255,255,255,.12);max-width:80vw;transition:background .3s,color .3s}
+#sctrl{padding:10px 14px;background:rgba(0,0,0,.92);display:flex;align-items:center;gap:8px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.07)}
+#sstat{color:var(--txt2);font-size:.72rem;flex:1;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#cdov{position:absolute;inset:0;background:rgba(0,0,0,.78);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;transition:background .4s}
 #cdov.on{display:flex}
-#cdnum{font-family:'Syne',sans-serif;font-size:7rem;font-weight:800;color:var(--acc);line-height:1;animation:pulse 1s ease-in-out infinite}
+#cdname{color:rgba(255,255,255,.9);font-size:1.1rem;font-weight:700;margin-bottom:6px;text-align:center;padding:0 20px}
+#cdnum{font-family:'Syne',sans-serif;font-size:min(7rem,22vw);font-weight:800;color:var(--acc);line-height:1;animation:pulse 1s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 #flash{position:absolute;inset:0;background:#fff;display:none;z-index:20}
 canvas#qsc{display:none}
-#cambk{display:none;position:absolute;inset:0;z-index:50;background:var(--bg);overflow-y:auto;padding:24px 18px 100px}
+#cambk{display:none;position:absolute;inset:0;z-index:50;background:var(--bg);overflow-y:auto;padding:24px 18px}
+/* ── MOBILE ── */
+@media(max-width:600px){
+  .ph{padding:12px 12px 6px}.ph h1{font-size:1.1rem}
+  .pc{padding:0 10px 88px}
+  .card{padding:11px}
+  .fr{flex-direction:column;gap:0}
+  .grid2{gap:8px}
+  .sc .sv{font-size:1.4rem}
+  table{font-size:.73rem}
+  th,td{padding:6px 7px}
+  .sg-table th,.sg-table td{padding:3px 2px}
+  .sg-table input[type=time]{padding:3px;font-size:.63rem}
+  #sctrl{padding:7px 10px;gap:6px}
+}
 
 /* ── EMP CARD ── */
 .ec{display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--brd);margin-bottom:8px;cursor:pointer;transition:border-color .15s}
@@ -396,9 +407,9 @@ canvas#qsc{display:none}
             <div id="shit">Aponte para o QR Code do funcionário</div>
           </div>
           <div id="cdov">
-            <div style="color:var(--txt2);font-size:.88rem;margin-bottom:8px" id="cdname"></div>
-            <div id="cdnum">3</div>
-            <div style="color:var(--acc);font-size:.8rem;margin-top:8px">Tirando foto…</div>
+            <div style="color:rgba(255,255,255,.8);font-size:1rem;font-weight:600;margin-bottom:8px" id="cdname"></div>
+            <div id="cdnum">5</div>
+            <div class="cd-sub" style="color:rgba(255,255,255,.7);font-size:.85rem;margin-top:10px;text-align:center;padding:0 20px">📸 Preparando foto…</div>
           </div>
           <div id="flash"></div>
           <!-- Câmera negada (permissão recusada no browser) -->
@@ -597,7 +608,7 @@ canvas#qsc{display:none}
 
         <!-- URL DO GAS -->
         <div class="card mb">
-          <div class="ct">🔗 Conexão com o Google Apps Script/div>
+          <div class="ct">🔗 Conexão com o Google Apps Script</div>
           <div class="fg">
             <label>URL /exec do seu Apps Script</label>
             <input type="url" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec" style="font-size:.75rem">
@@ -1105,38 +1116,111 @@ function startScan() {
     if (code) processQR(code.data);
   }, 250);
 }
+// Cooldown: guarda timestamp do último registro por funcId
+var qrCooldown = {};
+var QR_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutos
+
 function processQR(data) {
+  // Evita processar se já está em countdown
+  if (wallCD) return;
+
   var empId = null;
   try { var p = JSON.parse(data); empId = p.id || p.matricula; } catch(e) { empId = data; }
+
   var func = DB.funcionarios.find(function(f){ return f.id === empId || f.matricula === empId; });
   if (!func) {
-    document.getElementById('shit').textContent = '❌ QR não reconhecido';
-    setTimeout(function(){ document.getElementById('shit').textContent = 'Aponte para o QR Code do funcionário'; }, 2000);
+    showScanMsg('❌ QR não reconhecido', 'er');
     return;
   }
-  if (wallMode) startCountdown(func);
-  else doReg(func, null);
+
+  // Bloqueio de 2 minutos por funcionário
+  var lastTime = qrCooldown[func.id] || 0;
+  var elapsed  = Date.now() - lastTime;
+  if (elapsed < QR_COOLDOWN_MS) {
+    var restSec = Math.ceil((QR_COOLDOWN_MS - elapsed) / 1000);
+    showScanMsg('⏳ ' + func.nome.split(' ')[0] + ' — aguarde ' + restSec + 's', 'warn');
+    return;
+  }
+
+  // Inicia countdown com foto
+  startCountdown(func);
 }
+
+function showScanMsg(msg, type) {
+  var el = document.getElementById('shit');
+  el.textContent = msg;
+  el.style.background = type === 'er' ? 'rgba(244,63,94,.8)' : type === 'warn' ? 'rgba(251,191,36,.8)' : type === 'ok' ? 'rgba(52,211,153,.8)' : 'rgba(0,0,0,.75)';
+  el.style.color = '#fff';
+  setTimeout(function(){
+    el.textContent = 'Aponte para o QR Code do funcionário';
+    el.style.background = 'rgba(0,0,0,.75)';
+    el.style.color = '#fff';
+  }, 3000);
+}
+
 function startCountdown(func) {
-  if (wallCD) return; wallCD = true;
-  var cdo = document.getElementById('cdov'), cdn = document.getElementById('cdnum');
-  document.getElementById('cdname').textContent = func.nome;
-  cdo.classList.add('on'); cdn.textContent = 2;
-  var c = 2;
+  wallCD = true;
+  var cdo = document.getElementById('cdov');
+  var cdn = document.getElementById('cdnum');
+  var cdname = document.getElementById('cdname');
+
+  cdname.textContent = func.nome;
+  cdo.querySelector('.cd-sub').textContent = '📸 Preparando foto…';
+  cdn.textContent = 5;
+  cdo.classList.add('on');
+
+  var c = 5;
   var t = setInterval(function() {
     c--;
+    cdn.textContent = c;
     if (c <= 0) {
       clearInterval(t);
-      var v = document.getElementById('scvid'), cv2 = document.createElement('canvas');
-      cv2.width = v.videoWidth; cv2.height = v.videoHeight; cv2.getContext('2d').drawImage(v, 0, 0);
-      var photo = cv2.toDataURL('image/jpeg', .65);
-      var fl = document.getElementById('flash'); fl.style.display = 'block'; setTimeout(function(){ fl.style.display='none'; }, 180);
-      cdo.classList.remove('on');
-      doReg(func, photo);
-      setTimeout(function(){ wallCD = false; }, 3000);
-    } else cdn.textContent = c;
+      // Tira foto do frame atual
+      var v   = document.getElementById('scvid');
+      var cv2 = document.createElement('canvas');
+      cv2.width  = v.videoWidth;
+      cv2.height = v.videoHeight;
+      cv2.getContext('2d').drawImage(v, 0, 0);
+      var photo = cv2.toDataURL('image/jpeg', 0.7);
+
+      // Flash
+      var fl = document.getElementById('flash');
+      fl.style.display = 'block';
+      setTimeout(function(){ fl.style.display = 'none'; }, 200);
+
+      // Feedback visual — enviando
+      cdn.textContent = '⏳';
+      cdo.querySelector('.cd-sub').textContent = 'Registrando…';
+
+      // Registra o ponto
+      doReg(func, photo, null, function(ok) {
+        // Mostra resultado na tela do scanner
+        cdn.textContent = ok ? '✅' : '❌';
+        cdo.querySelector('.cd-sub').textContent = ok
+          ? func.nome.split(' ')[0] + ' — ' + getTipoLabel(nextPunchLabel(func.id)) + ' registrado!'
+          : 'Falha ao registrar. Tente novamente.';
+        cdo.style.background = ok ? 'rgba(52,211,153,.85)' : 'rgba(244,63,94,.85)';
+
+        setTimeout(function(){
+          cdo.classList.remove('on');
+          cdo.style.background = 'rgba(0,0,0,.72)';
+          wallCD = false;
+        }, 3000);
+      });
+
+      // Marca cooldown
+      qrCooldown[func.id] = Date.now();
+    }
   }, 1000);
 }
+
+function getTipoLabel(tipo) {
+  return { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída Almoço', almoco_retorno:'Retorno Almoço' }[tipo] || tipo;
+}
+function nextPunchLabel(funcId) {
+  return nextPunch(funcId, new Date().toISOString().substr(0,10));
+}
+
 function nextPunch(funcId, ds) {
   var seq = ['entrada','almoco_saida','almoco_retorno','saida'];
   var today_bats = DB.batidas.filter(function(b){ return b.funcId === funcId && b.data === ds; })
@@ -1145,32 +1229,29 @@ function nextPunch(funcId, ds) {
   var last = today_bats[today_bats.length - 1];
   return seq[(seq.indexOf(last.tipo) + 1) % seq.length];
 }
+
 function doReg(func, photo, obsExtra, cb) {
-  var now = new Date(), ds = now.toISOString().substr(0, 10);
+  var now  = new Date(), ds = now.toISOString().substr(0, 10);
   var tipo = nextPunch(func.id, ds);
-  var tl = { entrada:'Entrada', saida:'Saída', almoco_saida:'Saída p/ Almoço', almoco_retorno:'Retorno Almoço' };
 
   var doSave = function(loc) {
     var locFinal = obsExtra ? (loc ? loc + ' · ' + obsExtra : obsExtra) : loc;
     var bat = {
-      funcId:      func.id,
-      funcNome:    func.nome,
-      entidadeId:  func.entidadeId || func.entidade || DB.config.defaultEntity || '',
-      data:        ds,
-      timestamp:   now.toISOString(),
-      tipo:        tipo,
-      localizacao: locFinal || '',
-      device:      navigator.userAgent.substr(0, 80),
-      fotoBase64:  photo || ''   // foto vai junto — o backend salva no Drive
+      funcId:     func.id,
+      funcNome:   func.nome,
+      entidadeId: func.entidadeId || func.entidade || DB.config.defaultEntity || '',
+      data:       ds,
+      timestamp:  now.toISOString(),
+      tipo:       tipo,
+      localizacao:locFinal || '',
+      device:     navigator.userAgent.substr(0, 80),
+      fotoBase64: photo || ''
     };
     // Salva localmente para feedback imediato
     DB.batidas.push(Object.assign({ id: '_tmp_' + uid(), fotoUrl: '' }, bat));
-    // Envia para o servidor via POST no-cors
-    callPost('registrarBatida', bat, function() {
-      toast('✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo], 'ok');
-      var el = document.getElementById('shit');
-      if (el) { el.textContent = '✅ ' + func.nome.split(' ')[0] + ' — ' + tl[tipo]; setTimeout(function(){ el.textContent = 'Aponte para o QR Code do funcionário'; }, 3000); }
-      if (cb) cb();
+    // Envia para o servidor — só aqui ocorre a requisição
+    callPost('registrarBatida', bat, function(r) {
+      if (cb) cb(r ? true : false);
     });
   };
 
@@ -1184,6 +1265,7 @@ function doReg(func, photo, obsExtra, cb) {
     doSave(null);
   }
 }
+
 document.addEventListener('visibilitychange', function() {
   if (document.hidden && curPg === 'scanner') stopCam();
   else if (!document.hidden && curPg === 'scanner') initCam();
