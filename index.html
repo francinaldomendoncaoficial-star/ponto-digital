@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>PontoQR</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
 /* ═══════════════════════════════════════════════
    DESIGN TOKENS
@@ -823,31 +823,44 @@ function callGet(action, params, cb) {
     });
   }
   fetch(url)
-    .then(function(res) { return res.json(); })
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
     .then(function(data) {
-      if (data && data.error) toast('Erro: ' + data.error, 'er');
+      if (data && data.error) {
+        toast('Erro servidor: ' + data.error, 'er');
+        console.error('callGet erro servidor:', action, data.error);
+      }
       if (cb) cb(data);
     })
     .catch(function(err) {
-      toast('Erro ao buscar dados', 'er');
+      toast('❌ Erro ao buscar dados (' + action + '): ' + err.message, 'er');
+      console.error('callGet erro:', action, err);
       hideSpin();
       if (cb) cb(null);
     });
 }
 
 // callPost: envia dados via POST no-cors (igual ao exemplo do cliente)
-// O browser não lê a resposta, mas o GAS salva tudo na planilha
 function callPost(action, payload, cb) {
-  if (!GAS_URL) { if (cb) cb(null); return; }
+  if (!GAS_URL) {
+    toast('⚠️ URL do Apps Script não configurada — vá em Configurações', 'er');
+    if (cb) cb(null);
+    return;
+  }
   fetch(GAS_URL, {
     method:  'POST',
     mode:    'no-cors',
     headers: { 'Content-Type': 'text/plain' },
     body:    JSON.stringify({ action: action, payload: payload || {} })
   })
-  .then(function() { if (cb) cb({ ok: true }); })
+  .then(function() {
+    if (cb) cb({ ok: true });
+  })
   .catch(function(err) {
-    toast('Erro ao enviar: ' + err.message, 'er');
+    toast('❌ Erro ao enviar para planilha: ' + err.message, 'er');
+    console.error('callPost erro:', action, err);
     if (cb) cb(null);
   });
 }
