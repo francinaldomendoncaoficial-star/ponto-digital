@@ -678,14 +678,35 @@ canvas#qsc{display:none}
       <div class="fg"><label>Nome completo *</label><input type="text" id="mf-nome"></div>
       <div class="fg"><label>Cargo</label><input type="text" id="mf-cargo"></div>
       <div class="fg"><label>Entidade / Obra</label><select id="mf-ent"></select></div>
+
+      <!-- FOTO -->
       <div class="fg">
-        <label>Foto (URL ou capturar)</label>
-        <input type="text" id="mf-foto" placeholder="URL da foto ou deixe em branco">
-        <img id="mf-prev" src="" style="display:none;width:72px;height:72px;border-radius:50%;object-fit:cover;margin-top:8px;border:2px solid var(--acc)">
+        <label>Foto do funcionário</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div id="mf-av" style="width:72px;height:72px;border-radius:50%;background:var(--bg3);border:2px solid var(--brd);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--txt3);font-size:1.8rem">👤</div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <button class="btn bs bsm" type="button" onclick="mfCaptureCamera()">📷 Câmera</button>
+            <button class="btn bs bsm" type="button" onclick="document.getElementById('mf-file').click()">🖼 Selecionar arquivo</button>
+            <input type="file" id="mf-file" accept="image/*" style="display:none" onchange="mfFileSelected(event)">
+          </div>
+        </div>
+        <!-- câmera inline -->
+        <div id="mf-cam-wrap" style="display:none;margin-bottom:10px;position:relative;border-radius:10px;overflow:hidden;background:#000">
+          <video id="mf-vid" playsinline autoplay muted style="width:100%;max-height:240px;object-fit:cover;display:block"></video>
+          <div style="display:flex;gap:8px;padding:8px;background:rgba(0,0,0,.7)">
+            <button class="btn bp" style="flex:1" type="button" onclick="mfShoot()">📸 Tirar foto</button>
+            <button class="btn bs" type="button" onclick="mfStopCamera()">✕ Fechar</button>
+          </div>
+        </div>
+        <canvas id="mf-canvas" style="display:none"></canvas>
+        <input type="hidden" id="mf-foto-b64"> <!-- base64 da foto nova -->
+        <input type="text" id="mf-foto" placeholder="URL da foto (preenchido automaticamente)" style="font-size:.75rem;color:var(--txt3)">
       </div>
+
       <div class="fc g8 mt16">
         <button class="btn bp" onclick="saveF()">💾 Salvar</button>
         <button class="btn bs" onclick="closeM('mf')">Cancelar</button>
+        <button class="btn bd" id="mf-del-btn" style="display:none" onclick="delFFromModal()">🗑 Excluir</button>
       </div>
     </div>
   </div>
@@ -1192,12 +1213,13 @@ function startCountdown(func) {
       cdn.textContent = '⏳';
       cdo.querySelector('.cd-sub').textContent = 'Registrando…';
 
-      // Registra o ponto
+      // Registra o ponto — captura o tipo ANTES de registrar
+      var tipoRegistrado = nextPunch(func.id, new Date().toISOString().substr(0,10));
+
       doReg(func, photo, null, function(ok) {
-        // Mostra resultado na tela do scanner
         cdn.textContent = ok ? '✅' : '❌';
         cdo.querySelector('.cd-sub').textContent = ok
-          ? func.nome.split(' ')[0] + ' — ' + getTipoLabel(nextPunchLabel(func.id)) + ' registrado!'
+          ? func.nome.split(' ')[0] + ' — ' + getTipoLabel(tipoRegistrado) + ' registrado!'
           : 'Falha ao registrar. Tente novamente.';
         cdo.style.background = ok ? 'rgba(52,211,153,.85)' : 'rgba(244,63,94,.85)';
 
@@ -1516,11 +1538,16 @@ function renderFL(eid) {
       '<div class="ei"><div class="en">' + f.nome + '</div>' +
       '<div class="es">' + (f.cargo||'—') + ' · Mat: ' + (f.matricula||'—') + '</div>' +
       '<div class="es">' + (ent ? ent.nome : 'Sem entidade') + '</div></div>' +
-      '<button class="btn bs bxs" onclick="event.stopPropagation();openMF(\'' + f.id + '\')">✏️</button></div>';
+      '<div style="display:flex;gap:4px;flex-shrink:0">' +
+      '<button class="btn bs bxs" onclick="event.stopPropagation();openMF(\'' + f.id + '\')">✏️</button>' +
+      '<button class="btn bd bxs" onclick="event.stopPropagation();delFConfirm(\'' + f.id + '\')">🗑</button>' +
+      '</div></div>';
   }).join('');
 }
 function openMF(id) {
   refreshSels();
+  mfStopCamera();
+  document.getElementById('mf-foto-b64').value = '';
   if (id) {
     var f = DB.funcionarios.find(function(fn){ return fn.id === id; });
     document.getElementById('mf-ttl').textContent = 'Editar Funcionário';
@@ -1531,41 +1558,133 @@ function openMF(id) {
     document.getElementById('mf-cargo').value = f.cargo || '';
     document.getElementById('mf-ent').value = f.entidadeId || f.entidade || '';
     document.getElementById('mf-foto').value = f.fotoUrl || '';
-    var p = document.getElementById('mf-prev');
-    if (f.fotoUrl) { p.src = f.fotoUrl; p.style.display = 'block'; } else p.style.display = 'none';
+    document.getElementById('mf-del-btn').style.display = '';
+    mfSetPreview(f.fotoUrl || '', f.nome || '?');
   } else {
     document.getElementById('mf-ttl').textContent = 'Novo Funcionário';
     document.getElementById('mf-id').value = '';
     ['mf-mat','mf-cpf','mf-nome','mf-cargo','mf-foto'].forEach(function(x){ document.getElementById(x).value=''; });
     document.getElementById('mf-ent').value = '';
-    document.getElementById('mf-prev').style.display = 'none';
+    document.getElementById('mf-del-btn').style.display = 'none';
+    mfSetPreview('', '');
   }
   openM('mf');
+}
+
+function mfSetPreview(url, nome) {
+  var av = document.getElementById('mf-av');
+  if (url) {
+    av.innerHTML = '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover">';
+  } else {
+    av.innerHTML = nome ? '<span style="font-family:Syne,sans-serif;font-weight:700;font-size:1.6rem;color:var(--acc)">'+nome[0].toUpperCase()+'</span>' : '👤';
+  }
+}
+
+// ── câmera do modal ──
+var mfStream = null;
+function mfCaptureCamera() {
+  var wrap = document.getElementById('mf-cam-wrap');
+  wrap.style.display = 'block';
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    .then(function(s) {
+      mfStream = s;
+      var v = document.getElementById('mf-vid');
+      v.srcObject = s; v.play();
+    })
+    .catch(function(err) {
+      wrap.style.display = 'none';
+      toast('Câmera indisponível: ' + err.message, 'er');
+    });
+}
+function mfStopCamera() {
+  if (mfStream) { mfStream.getTracks().forEach(function(t){ t.stop(); }); mfStream = null; }
+  var wrap = document.getElementById('mf-cam-wrap');
+  if (wrap) wrap.style.display = 'none';
+}
+function mfShoot() {
+  var v = document.getElementById('mf-vid');
+  var cv = document.getElementById('mf-canvas');
+  cv.width = v.videoWidth; cv.height = v.videoHeight;
+  cv.getContext('2d').drawImage(v, 0, 0);
+  var b64 = cv.toDataURL('image/jpeg', 0.8);
+  document.getElementById('mf-foto-b64').value = b64;
+  document.getElementById('mf-foto').value = '';
+  mfSetPreview(b64, '');
+  mfStopCamera();
+  toast('Foto capturada!', 'ok');
+}
+function mfFileSelected(e) {
+  var file = e.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var b64 = ev.target.result;
+    document.getElementById('mf-foto-b64').value = b64;
+    document.getElementById('mf-foto').value = '';
+    mfSetPreview(b64, '');
+  };
+  reader.readAsDataURL(file);
+}
+function delFFromModal() {
+  var id = document.getElementById('mf-id').value; if (!id) return;
+  if (!confirm('Excluir este funcionário?')) return;
+  showSpin('Excluindo…');
+  call('deleteFuncionario', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      DB.funcionarios = DB.funcionarios.filter(function(f){ return f.id !== id; });
+      closeM('mf'); loadFuncs(); toast('Funcionário excluído', 'in');
+    }
+  });
 }
 function saveF() {
   var nome = document.getElementById('mf-nome').value.trim();
   var mat  = document.getElementById('mf-mat').value.trim();
   if (!nome || !mat) { toast('Nome e matrícula obrigatórios', 'er'); return; }
   var eid  = document.getElementById('mf-id').value;
-  var data = {
-    id: eid || undefined,
-    nome: nome, matricula: mat,
-    cpf:       document.getElementById('mf-cpf').value.trim(),
-    cargo:     document.getElementById('mf-cargo').value.trim(),
-    entidadeId: document.getElementById('mf-ent').value,
-    fotoUrl:   document.getElementById('mf-foto').value.trim()
+  var fotoUrl  = document.getElementById('mf-foto').value.trim();
+  var fotoB64  = document.getElementById('mf-foto-b64').value;
+
+  var doSave = function(urlFinal) {
+    mfStopCamera();
+    var data = {
+      id: eid || undefined,
+      nome: nome, matricula: mat,
+      cpf:        document.getElementById('mf-cpf').value.trim(),
+      cargo:      document.getElementById('mf-cargo').value.trim(),
+      entidadeId: document.getElementById('mf-ent').value,
+      fotoUrl:    urlFinal || ''
+    };
+    showSpin('Salvando…');
+    call('saveFuncionario', data, function(r) {
+      hideSpin();
+      if (r && r.ok) {
+        if (!eid) data.id = r.id;
+        var idx = DB.funcionarios.findIndex(function(f){ return f.id === (eid || r.id); });
+        if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
+        else DB.funcionarios.push(data);
+        closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
+      }
+    });
   };
-  showSpin('Salvando…');
-  call('saveFuncionario', data, function(r) {
-    hideSpin();
-    if (r && r.ok) {
-      if (!eid) data.id = r.id;
-      var idx = DB.funcionarios.findIndex(function(f){ return f.id === (eid || r.id); });
-      if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
-      else DB.funcionarios.push(data);
-      closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
-    }
-  });
+
+  // Se tem foto nova em base64, envia pro Drive primeiro
+  if (fotoB64) {
+    showSpin('Enviando foto…');
+    callPost('uploadFoto', {
+      base64:   fotoB64,
+      funcId:   eid || mat,
+      funcNome: nome,
+      data:     new Date().toISOString().substr(0,10),
+      tipo:     'perfil'
+    }, function() {
+      // no-cors: não conseguimos ler a URL de retorno
+      // Salva a base64 localmente para exibição e deixa o Drive processar
+      hideSpin();
+      doSave(fotoB64); // usa base64 como fotoUrl local (funciona para exibição)
+    });
+  } else {
+    doSave(fotoUrl);
+  }
 }
 function openFD(id) {
   var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
@@ -1655,6 +1774,18 @@ function printCracha(id) {
     '</body></html>'
   );
   w.document.close();
+}
+function delFConfirm(id) {
+  var f = DB.funcionarios.find(function(fn){ return fn.id === id; });
+  if (!confirm('Excluir ' + (f ? f.nome : 'funcionário') + '?')) return;
+  showSpin('Excluindo…');
+  call('deleteFuncionario', { id: id }, function(r) {
+    hideSpin();
+    if (r && r.ok) {
+      DB.funcionarios = DB.funcionarios.filter(function(fn){ return fn.id !== id; });
+      loadFuncs(); toast('Funcionário excluído', 'in');
+    }
+  });
 }
 function delF(id) {
   if (!confirm('Excluir funcionário?')) return;
