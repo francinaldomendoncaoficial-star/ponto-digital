@@ -1296,20 +1296,21 @@ function doReg(func, photo, obsExtra, cb) {
       device:     navigator.userAgent.substr(0, 80)
     };
     DB.batidas.push(Object.assign({ id: '_tmp_' + uid(), fotoUrl: '' }, bat));
-    // 1) Registra batida (payload leve — não inclui foto)
+    // 1) Registra batida — GAS retorna o id gerado
     callPost('registrarBatida', bat, function(r) {
       if (cb) cb(r ? true : false);
+      // 2) Envia foto com o batidaId para o GAS atualizar a linha correta
+      if (photo && r && r.id) {
+        callPost('uploadFoto', {
+          base64:   photo,
+          funcId:   func.id,
+          funcNome: func.nome,
+          data:     ds,
+          tipo:     tipo,
+          batidaId: r.id   // chave para atualizar fotoUrl na planilha
+        }, function() {});
+      }
     });
-    // 2) Envia foto separada, em paralelo (se houver) — falha silenciosa não afeta o ponto
-    if (photo) {
-      callPost('uploadFoto', {
-        base64:   photo,
-        funcId:   func.id,
-        funcNome: func.nome,
-        data:     ds,
-        tipo:     tipo
-      }, function() {});
-    }
   };
 
   if (navigator.geolocation) {
@@ -1679,51 +1680,47 @@ function saveF() {
   var fotoUrl  = document.getElementById('mf-foto').value.trim();
   var fotoB64  = document.getElementById('mf-foto-b64').value;
 
-  var doSave = function(urlFinal) {
+  // Salva funcionário sempre primeiro — foto vai separada depois
+  showSpin('Salvando…');
+  callPost('saveFuncionario', {
+    id: eid || undefined,
+    nome: nome, matricula: mat,
+    cpf:        document.getElementById('mf-cpf').value.trim(),
+    cargo:      document.getElementById('mf-cargo').value.trim(),
+    entidadeId: document.getElementById('mf-ent').value,
+    fotoUrl:    fotoUrl || ''   // URL externa se preenchida, vazia se for base64
+  }, function(r) {
     mfStopCamera();
-    var data = {
-      id: eid || undefined,
-      nome: nome, matricula: mat,
-      cpf:        document.getElementById('mf-cpf').value.trim(),
-      cargo:      document.getElementById('mf-cargo').value.trim(),
+    if (!r || !r.ok) { hideSpin(); return; }
+    var savedId = r.id || eid;
+    // Atualiza DB local
+    var data = { id: savedId, nome: nome, matricula: mat,
+      cpf: document.getElementById('mf-cpf').value.trim(),
+      cargo: document.getElementById('mf-cargo').value.trim(),
       entidadeId: document.getElementById('mf-ent').value,
-      fotoUrl:    urlFinal || ''
+      fotoUrl: fotoUrl || ''
     };
-    showSpin('Salvando…');
-    callPost('saveFuncionario', data, function(r) {
-      hideSpin();
-      if (r && r.ok) {
-        if (!eid && r.id) data.id = r.id;
-        var idx = DB.funcionarios.findIndex(function(f){ return f.id === data.id; });
-        if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
-        else DB.funcionarios.push(data);
-        closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
-      }
-    });
-  };
+    var idx = DB.funcionarios.findIndex(function(f){ return f.id === savedId; });
+    if (idx >= 0) DB.funcionarios[idx] = Object.assign(DB.funcionarios[idx], data);
+    else DB.funcionarios.push(data);
 
-  // Se tem foto nova em base64, envia pro Drive e salva localmente
-  // NUNCA envia base64 para saveFuncionario (estouraria a célula da planilha)
-  if (fotoB64) {
-    showSpin('Enviando foto…');
-    callPost('uploadFoto', {
-      base64:   fotoB64,
-      funcId:   eid || mat,
-      funcNome: nome,
-      data:     new Date().toISOString().substr(0,10),
-      tipo:     'perfil'
-    }, function() {
-      hideSpin();
-      // Salva o funcionário com fotoUrl vazia — foto está no Drive
-      // mas exibimos a base64 localmente para feedback imediato
-      doSave('');
-      // Atualiza preview local com base64 (só na memória, não vai pra planilha)
-      var idx = DB.funcionarios.findIndex(function(f){ return f.matricula === mat; });
-      if (idx >= 0) DB.funcionarios[idx].fotoUrl = fotoB64;
-    });
-  } else {
-    doSave(fotoUrl);
-  }
+    if (fotoB64) {
+      // Envia foto via no-cors — não bloqueia o fluxo
+      callPost('uploadFoto', {
+        base64:   fotoB64,
+        funcId:   savedId,
+        funcNome: nome,
+        data:     new Date().toISOString().substr(0,10),
+        tipo:     'perfil'
+      }, function() {});
+      // Exibe base64 localmente enquanto o Drive processa
+      var i2 = DB.funcionarios.findIndex(function(f){ return f.id === savedId; });
+      if (i2 >= 0) DB.funcionarios[i2].fotoUrl = fotoB64;
+    }
+
+    hideSpin();
+    closeM('mf'); loadFuncs(); toast('Funcionário salvo!', 'ok');
+  });
 }
 function openFD(id) {
   var f = DB.funcionarios.find(function(fn){ return fn.id === id; }); if (!f) return;
