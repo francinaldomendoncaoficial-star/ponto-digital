@@ -1352,10 +1352,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const usuario = localStorage.getItem('pc_usuario');
 
   if (token && usuario) {
-    // Sessão salva: entra direto, valida em background
     _usuarioLogado = JSON.parse(usuario);
     _esconderLogin();
-    // Valida em background — se inválido, joga pro login
     api({ action:'sessao.validar', dados:{ token } }).then(r => {
       if (!r?.ok) {
         localStorage.removeItem('pc_token');
@@ -1363,8 +1361,9 @@ window.addEventListener('DOMContentLoaded', () => {
         _mostrarLogin();
       }
     }).catch(() => {});
+  } else {
+    _mostrarLogin();
   }
-  // Se não tem sessão, tela de login já está visível por padrão
 });
 
 let _usuarioLogado = null;
@@ -1376,6 +1375,10 @@ function _esconderLogin() {
 }
 
 function _mostrarLogin() {
+  // Limpar estado do app
+  document.getElementById('registros-table').innerHTML = '<div class="empty"><div class="icon">⏱</div><p>Nenhum registro neste mês.</p></div>';
+  document.getElementById('resumo-content').innerHTML  = '<div class="empty"><div class="icon">📊</div><p>Clique em Resumo para calcular.</p></div>';
+  document.getElementById('feriados-list').innerHTML   = '<div class="empty"><div class="icon">🗓️</div><p>Nenhum feriado cadastrado.</p></div>';
   document.getElementById('tela-login').style.display = 'flex';
   irEtapa('login');
 }
