@@ -448,15 +448,13 @@ tbody td{padding:.6rem .9rem;font-family:var(--mono);font-size:.78rem;}
 </div>
 
 <header>
-  <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-    <div class="logo">Ponto Certo <span>▸ CONTROLE DE JORNADA v5</span></div>
-    <button onclick="fazerLogout()" style="background:none;border:1px solid var(--border);color:var(--muted);
-      border-radius:8px;padding:.35rem .75rem;font-size:.78rem;cursor:pointer;font-family:var(--mono);
-      transition:all .2s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
-      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-      Sair
-    </button>
-  </div>
+  <div class="logo">Ponto Certo <span>▸ CONTROLE DE JORNADA v5</span></div>
+  <button onclick="fazerLogout()" title="Sair"
+    style="background:rgba(255,68,102,.1);border:1px solid var(--danger);color:var(--danger);
+    border-radius:8px;padding:.4rem .9rem;font-size:.82rem;cursor:pointer;font-family:var(--mono);
+    font-weight:700;transition:all .2s;white-space:nowrap;">
+    🚪 Sair
+  </button>
 </header>
 
 <div class="container">
