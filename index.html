@@ -693,17 +693,7 @@ let _registrosCache = [];
 let _cfg = { jornadaDom:0, jornadaSeg:540, jornadaTer:540, jornadaQua:540, jornadaQui:540, jornadaSex:480, jornadaSab:0, almocoDe:660, almocoAte:840 };
 let _batidas = [];
 
-window.addEventListener('DOMContentLoaded', () => {
-  if (GAS_URL) localStorage.setItem('ponto_gas_url', GAS_URL);
-  atualizarTitulos();
-  carregarConfig().then(() => { carregarRegistros(); carregarFeriados(); });
-  document.getElementById('cfg-almoco-de').addEventListener('change', () => {
-    document.getElementById('info-de').textContent = document.getElementById('cfg-almoco-de').value;
-  });
-  document.getElementById('cfg-almoco-ate').addEventListener('change', () => {
-    document.getElementById('info-ate').textContent = document.getElementById('cfg-almoco-ate').value;
-  });
-});
+// init movido para o bloco de login abaixo
 
 
 
@@ -1349,21 +1339,32 @@ let _idUsuarioTemp  = null;
 let _idRecuperacao  = null;
 let _tokenReset     = null;
 
-// Verificar sessão ao carregar
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', () => {
+  // Listeners de configuração
+  document.getElementById('cfg-almoco-de')?.addEventListener('change', () => {
+    document.getElementById('info-de').textContent = document.getElementById('cfg-almoco-de').value;
+  });
+  document.getElementById('cfg-almoco-ate')?.addEventListener('change', () => {
+    document.getElementById('info-ate').textContent = document.getElementById('cfg-almoco-ate').value;
+  });
+
   const token   = localStorage.getItem('pc_token');
   const usuario = localStorage.getItem('pc_usuario');
+
   if (token && usuario) {
-    const r = await api({ action:'sessao.validar', dados:{ token } });
-    if (r?.ok) {
-      _usuarioLogado = JSON.parse(usuario);
-      _esconderLogin();
-      return;
-    }
-    localStorage.removeItem('pc_token');
-    localStorage.removeItem('pc_usuario');
+    // Sessão salva: entra direto, valida em background
+    _usuarioLogado = JSON.parse(usuario);
+    _esconderLogin();
+    // Valida em background — se inválido, joga pro login
+    api({ action:'sessao.validar', dados:{ token } }).then(r => {
+      if (!r?.ok) {
+        localStorage.removeItem('pc_token');
+        localStorage.removeItem('pc_usuario');
+        _mostrarLogin();
+      }
+    }).catch(() => {});
   }
-  // Já inicializado no DOMContentLoaded do app — não duplicar
+  // Se não tem sessão, tela de login já está visível por padrão
 });
 
 let _usuarioLogado = null;
